@@ -28,7 +28,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.169 Import Speaker Labels</title>
+<title>Gravar — Version 0.6.171 Idle Final Save &amp; Project Folder</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -3025,13 +3025,13 @@ input[type=reset],
 </ul>
 <h3>Files, projects, autosave, and imports</h3>
 <ul>
-<li><strong>Project:</strong> Load, Save, Close, and Folder manage Gravar project JSON and the Project folder. Current Codes, Symbols, Groups, Code styles, and Group definitions are saved in the project.</li>
+<li><strong>Project:</strong> Load, Save, Close, and Folder manage Gravar project JSON and the Project folder. Current Codes, Symbols, Groups, Code styles, and Group definitions are saved in the project. In Safari, direct folder writing is unavailable: Save becomes Save As…, and the user chooses the team project folder in Safari's download dialog.</li>
 <li><strong>Codes &amp; Symbols:</strong> import/export reusable Code and Symbols JSON libraries. These shared-library files are separate from the Project folder, while every project still embeds its current palettes.</li>
 <li><strong>DOTE:</strong> imports MacWhisper DOTE JSON files directly from Files → Import. Gravar maps startTime, endTime, speakerDesignation, and text into Start, End, Duration, Speaker, and Transcript fields.</li>
 <li><strong>Import TSV:</strong> loads standard transcription TSV files. Gravar recognizes Start/End/Transcript headers, avoids misclassifying them as ELAN TSV, and sorts imported rows chronologically by Start time.</li>
 <li><strong>Load ELAN TSV:</strong> imports ELAN-style tab-delimited exports when onset/offset fields are truly time values.</li>
 <li><strong>Append project:</strong> appends rows from another Gravar project while preserving row data, notes, code values, group memberships, and timing.</li>
-<li><strong>Autosave:</strong> defaults to off. The interval defaults to 10 minutes and Keep saves defaults to 1. Turn autosave on with the checkbox in Files → Auto. After an autosave, 5 minutes without typing, clicking, pointer activity, or video playback pauses autosave; activity resumes it automatically.</li>
+<li><strong>Autosave:</strong> defaults to off. The interval defaults to 10 minutes and Keep saves defaults to 1. Turn autosave on with the checkbox in Files → Auto. After 5 minutes without typing, clicking, pointer activity, or video playback, Gravar performs one final autosave and then pauses; activity resumes autosave automatically.</li>
 </ul>
 <h3>Video tools and video pop-out</h3>
 <ul>
@@ -3391,14 +3391,16 @@ input[type=reset],
 /* Gravar V0.6.167: changes Line Note shortcut to Command/Ctrl-/ and converts transcript rows beginning with // to Comment rows on Command/Ctrl-Return. */
 /* Gravar V0.6.168: adds Files → Import → DOTE for direct MacWhisper DOTE JSON transcript import. */
 /* Gravar V0.6.169: normalizes default imported speaker labels from Speaker n to Spkr n across DOTE, TSV, and ELAN imports. */
+/* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
+/* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* =========================
    XBuild
    Single source of truth for visible build identity.
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.168',
-  label: 'Import Speaker Labels',
+  version: '0.6.171',
+  label: 'Idle Final Save & Project Folder',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -3533,6 +3535,7 @@ const XState = {
   autosaveTimer: null,
   autosaveIdleTimer: null,
   autosavePausedForIdle: false,
+  autosaveIdleFinalizing: false,
   autosaveLastSavedAt: '',
   autosaveLastSavedAtMs: 0,
   lastActivityAtMs: Date.now(),
@@ -3552,6 +3555,7 @@ const XState = {
   videoClipDirHandle: null,
   videoClipDirName: '',
   projectVideoSavedName: '',
+  safariSaveGuidanceShown: false,
   segmentPlayback: {
     active: false,
     loop: false,
@@ -12741,7 +12745,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Folder / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After an autosave, 5 minutes without typing, clicking, or video playback pauses autosave until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Full saved calibration reset','Click Clr to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','Rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier. Rows whose Transcript text begins with a single ( are parent tiers. When checked, italic Speaker rows can also be child tiers.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values. When unchecked, parent timecodes are inserted only when a child tier is first created.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -12902,7 +12906,7 @@ const XTopMenuFix = {
 const XActivity = {
   mark(kind){
     XState.lastActivityAtMs=Date.now();
-    if(XState.autosavePausedForIdle && XState.autosaveMinutes>0){
+    if(XState.autosaveEnabled && XState.autosavePausedForIdle && XState.autosaveMinutes>0){
       XState.autosavePausedForIdle=false;
       XFiles.setAutosaveInterval(XState.autosaveMinutes, {fromActivityResume:true});
       if(XDom.autosaveStatus){
@@ -12914,27 +12918,38 @@ const XActivity = {
     const playing=v=>v && !v.paused && !v.ended && v.readyState>1;
     return playing(XDom.video) || playing(XDom.secondaryVideo) || playing(XDom.externalAudio);
   },
-  checkAutosaveIdle(){
-    if(XState.autosaveMinutes<=0) return;
-    if(XState.autosavePausedForIdle) return;
-    if(!XState.autosaveLastSavedAtMs) return;
+  async checkAutosaveIdle(){
+    if(!XState.autosaveEnabled || XState.autosaveMinutes<=0) return;
+    if(XState.autosavePausedForIdle || XState.autosaveIdleFinalizing) return;
     if(this.isVideoPlaying()){
       this.mark('video playback');
       return;
     }
     const now=Date.now();
     const idleMs=now-(XState.lastActivityAtMs||now);
-    const sinceSaveMs=now-(XState.autosaveLastSavedAtMs||now);
-    if(idleMs>=XState.autosaveIdlePauseMs && sinceSaveMs>=XState.autosaveIdlePauseMs){
-      XState.autosavePausedForIdle=true;
+    if(idleMs>=XState.autosaveIdlePauseMs){
+      XState.autosaveIdleFinalizing=true;
       if(XState.autosaveTimer){
         clearInterval(XState.autosaveTimer);
         XState.autosaveTimer=null;
       }
-      if(XDom.autosaveStatus){
-        XDom.autosaveStatus.textContent='Autosave paused after 5 min inactivity; resumes with app activity';
+      let finalSaved=false;
+      try{
+        finalSaved=await XFiles.autosave(true,{idleFinal:true});
+      }catch(err){
+        console.warn('Final inactivity autosave failed.',err);
       }
-      XStatus.set('Autosave paused after 5 minutes without typing, clicking, or video playback. It will restart when activity resumes.');
+      XState.autosavePausedForIdle=true;
+      XState.autosaveIdleFinalizing=false;
+      const destination=XState.dataDirHandle ? 'Project folder and browser recovery storage' : 'browser recovery storage';
+      if(XDom.autosaveStatus){
+        XDom.autosaveStatus.textContent=finalSaved
+          ? 'Final autosave completed after 5 min inactivity; paused until activity resumes'
+          : 'Final autosave failed after 5 min inactivity; paused until activity resumes';
+      }
+      XStatus.set(finalSaved
+        ? 'Final autosave completed to '+destination+' after 5 minutes of inactivity. Autosave is now paused and will restart when activity resumes.'
+        : 'Autosave reached the 5-minute inactivity boundary, but the final save failed. Autosave is paused and will restart when activity resumes.');
     }
   },
   bind(){
@@ -13340,7 +13355,7 @@ const XFiles = {
     // Commit active Code and rich-text Line Note HTML before project save or autosave so Line Note formatting persists across reloads.
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
     return {
-      appVersion:'Gravar_v0.6.169_import_speaker_labels',
+      appVersion:'Gravar_v0.6.171_idle_final_save_project_folder',
       projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true},
       projectName:XState.projectName || '',
       logHtml:(XDom.log ? XRichText.htmlFrom(XDom.log) : (XState.logHtml||'')),
@@ -13496,12 +13511,19 @@ const XFiles = {
     if(XState.dataDirHandle){
       const ok=await this.verifyProjectFolderPermission();
       if(ok) return true;
-      XStatus.set('Project folder permission was not granted. Save Project will use download fallback.');
-      return false;
+
+      // A remembered handle can become stale or lose authorization after a
+      // reload/browser restart. Clear it so the same Save click can immediately
+      // re-designate the Project folder instead of silently falling back.
+      XState.dataDirHandle=null;
+      XState.dataDirName='';
+      XState.projectVideoSavedName='';
+      if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Re-designate required';
+      XStatus.set('Project folder authorization expired. Re-designate the Project folder to restore direct saves and Old_files archiving.');
     }
 
     if(promptIfMissing && window.showDirectoryPicker){
-      XStatus.set('Choose a Project folder for saving this project.');
+      XStatus.set('Designate the Project folder for this project. The same folder will be used for manual saves, autosaves, and Old_files.');
       await this.chooseDataFolder();
       if(XState.dataDirHandle){
         return await this.verifyProjectFolderPermission();
@@ -13570,10 +13592,55 @@ const XFiles = {
     return true;
   },
 
+  hasDirectFolderAccess(){
+    return typeof window.showDirectoryPicker === 'function';
+  },
+
+  isSafariBrowser(){
+    const ua=String((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+    return /Safari/i.test(ua) && !/(Chrome|Chromium|CriOS|Edg|OPR|Android)/i.test(ua);
+  },
+
+  configureProjectSaveUi(){
+    if(this.hasDirectFolderAccess()){
+      if(XDom.chooseDataFolder){
+        XDom.chooseDataFolder.textContent='Designate';
+        XDom.chooseDataFolder.title='Designate or re-designate the Project folder used for project saves, autosaves, exports, and Old_files archiving.';
+      }
+      if(XDom.saveProject){
+        XDom.saveProject.textContent='Save';
+        XDom.saveProject.title='Save to the designated Project folder. If the folder is missing or authorization expired, this Save click will ask you to re-designate it.';
+      }
+      return;
+    }
+    if(XDom.chooseDataFolder){
+      XDom.chooseDataFolder.textContent='Save location';
+      XDom.chooseDataFolder.title='Safari cannot grant Gravar direct write access to a local folder. Click for the Safari Save As workflow.';
+    }
+    if(XDom.saveProject){
+      XDom.saveProject.textContent='Save As…';
+      XDom.saveProject.title='Download the project JSON. In Safari, choose the team project folder in the download save dialog.';
+    }
+    if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Choose at each save';
+  },
+
+  showSafariSaveGuidance(force){
+    if(!force && XState.safariSaveGuidanceShown) return;
+    XState.safariSaveGuidanceShown=true;
+    alert(
+      'Safari cannot give Gravar direct write access to a local project folder, and it does not reveal the folder from which a video was imported.\n\n'+
+      'Safari workflow:\n'+
+      '1. Open Safari > Settings > General.\n'+
+      '2. Set File download location to Ask for each download.\n'+
+      '3. In Gravar, click Save As… and choose the team project folder in the save dialog.\n\n'+
+      'For automatic direct saving to an authorized folder, use Chrome or Edge.'
+    );
+    XStatus.set('Safari save workflow: use Save As… and choose the team project folder in the download dialog.');
+  },
+
   async chooseDataFolder(){
-    if(!window.showDirectoryPicker){
-      alert('This browser does not support choosing a project folder from this context. Save Project will use a normal download instead. Chrome or Edge usually provide the needed File System Access API.');
-      XStatus.set('Project folder unavailable in this browser; using download fallback.');
+    if(!this.hasDirectFolderAccess()){
+      this.showSafariSaveGuidance(true);
       return;
     }
 
@@ -13583,7 +13650,7 @@ const XFiles = {
       XState.dataDirName=handle.name||'selected folder';
       XState.projectVideoSavedName='';
       if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent=XState.dataDirName;
-      try{ await this.ensureOldFilesFolder(); await this.archiveLegacyAutosaveFiles(); }catch(folderErr){ console.warn('Could not create Old_files folder.', folderErr); }
+      try{ await this.synchronizeAutosaveFolderState(); }catch(folderErr){ console.warn('Could not synchronize Project-folder autosaves and Old_files.', folderErr); }
 
       let message='Project folder selected: '+XState.dataDirName+'. Project files and autosaves will be written there; older autosaves will be archived in Old_files.';
       if(XState.videoBlob && XState.videoName){
@@ -13626,10 +13693,14 @@ const XFiles = {
         let copiedVideo=false;
         try{ copiedVideo=await this.saveLoadedVideoToProjectFolder(); }catch(videoErr){ console.warn('Could not copy video to project folder.',videoErr); }
         await this.writeTextFileToDataFolder(filename,json);
-        XStatus.set('Project saved to Project folder: '+filename+(copiedVideo?' ; video present: '+XState.videoName:'.'));
+        try{ await this.synchronizeAutosaveFolderState(); }catch(syncErr){ console.warn('Project saved, but autosave-folder synchronization failed.',syncErr); }
+        XStatus.set('Project saved to designated Project folder: '+filename+(copiedVideo?' ; video present: '+XState.videoName:'.')+' Autosaves and Old_files are aligned with this folder.');
       }else{
+        if(!this.hasDirectFolderAccess()) this.showSafariSaveGuidance(false);
         XUtils.download(json,filename,'application/json;charset=utf-8');
-        XStatus.set('Project folder was not available. Project data downloaded instead. Choose Project folder to save directly into the project folder.');
+        XStatus.set(this.hasDirectFolderAccess()
+          ? 'Project folder was not available. Project data downloaded instead. Choose Project folder to save directly into the project folder.'
+          : 'Project downloaded. In Safari, choose the team project folder in the Save As dialog; if no dialog appears, set Safari File download location to Ask for each download.');
       }
     }catch(err){
       console.error(err);
@@ -14030,7 +14101,9 @@ const XFiles = {
         const rememberedProjectFolder=data.projectFolderName || data.dataFolderName || '';
         const rememberedWorkspaceFolder=data.workspaceFolderName || '';
         if(rememberedProjectFolder && !XState.dataDirHandle && XDom.dataFolderStatus){
-          XDom.dataFolderStatus.textContent='Not selected (project was from '+rememberedProjectFolder+(rememberedWorkspaceFolder ? ' in workspace '+rememberedWorkspaceFolder : '')+')';
+          XDom.dataFolderStatus.textContent=this.hasDirectFolderAccess()
+            ? 'Re-designate '+rememberedProjectFolder
+            : 'Save As to '+rememberedProjectFolder;
         }
         if(data.projectVideoSavedName){
           XState.projectVideoSavedName=data.projectVideoSavedName;
@@ -15592,14 +15665,20 @@ const XFiles = {
   },
 
   autosaveBackupMatch(name){
-    const escapedPrefix=this.autosaveFilePrefix().replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const currentPrefix=this.autosaveFilePrefix();
+    const escapedPrefix=currentPrefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     let match=new RegExp('^'+escapedPrefix+'-(\\d+)\\.json$','i').exec(name);
-    if(match) return {number:Number(match[1])||0, kind:'current-project'};
+    if(match) return {number:Number(match[1])||0, kind:'current-project', series:currentPrefix};
 
-    // Legacy autosaves from earlier milestones are treated as old autosaves
-    // for the selected Project folder and can be moved into Old_files.
+    // Recognize numbered autosaves from earlier project names in the same
+    // designated folder. This prevents renamed/reloaded projects from leaving
+    // unlimited backup series beside the active project.
+    match=/^(.+?-auto)-(\d+)\.json$/i.exec(name);
+    if(match) return {number:Number(match[2])||0, kind:'gravar-project', series:String(match[1]||'').toLowerCase()};
+
+    // Legacy autosaves from earlier milestones are treated as one series.
     match=/^(?:gravar|xtrans)-autosave-(\d+)\.json$/i.exec(name);
-    if(match) return {number:Number(match[1])||0, kind:'legacy'};
+    if(match) return {number:Number(match[1])||0, kind:'legacy', series:'legacy-autosave'};
 
     return null;
   },
@@ -15630,27 +15709,53 @@ const XFiles = {
 
     try{
       await this.ensureOldFilesFolder();
-      const backups=[];
       if(typeof XState.dataDirHandle.entries !== 'function') return;
+      const bySeries=new Map();
 
       for await (const [name,handle] of XState.dataDirHandle.entries()){
         if(!handle || handle.kind!=='file') continue;
         const match=this.autosaveBackupMatch(name);
-        if(match){
-          backups.push({name,number:match.number,kind:match.kind});
-        }
+        if(!match) continue;
+        const series=match.series || 'unknown';
+        if(!bySeries.has(series)) bySeries.set(series,[]);
+        bySeries.get(series).push({name,number:match.number,kind:match.kind,series});
       }
 
-      backups.sort((a,b)=>a.number-b.number || a.name.localeCompare(b.name));
-      const excess=backups.length-limit;
-      if(excess<=0) return;
-
-      for(const item of backups.slice(0,excess)){
-        await this.archiveProjectFolderFile(item.name);
+      for(const backups of bySeries.values()){
+        backups.sort((a,b)=>a.number-b.number || a.name.localeCompare(b.name));
+        const excess=backups.length-limit;
+        if(excess<=0) continue;
+        for(const item of backups.slice(0,excess)){
+          await this.archiveProjectFolderFile(item.name);
+        }
       }
     }catch(err){
       console.warn('Autosave archive step failed.', err);
     }
+  },
+
+  async synchronizeAutosaveFolderState(){
+    if(!XState.dataDirHandle) return {maxCount:XState.autosaveCount||0};
+    await this.ensureOldFilesFolder();
+    await this.archiveLegacyAutosaveFiles();
+
+    // Continue the current project's numbering from the highest backup already
+    // present in the designated folder. This avoids resets and filename reuse
+    // when a project is loaded on another machine or in a new browser session.
+    let maxCount=Math.max(0,Number(XState.autosaveCount)||0);
+    if(typeof XState.dataDirHandle.entries === 'function'){
+      const prefix=this.autosaveFilePrefix();
+      const escapedPrefix=prefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const pattern=new RegExp('^'+escapedPrefix+'-(\\d+)\\.json$','i');
+      for await (const [name,handle] of XState.dataDirHandle.entries()){
+        if(!handle || handle.kind!=='file') continue;
+        const match=pattern.exec(name);
+        if(match) maxCount=Math.max(maxCount,Number(match[1])||0);
+      }
+    }
+    XState.autosaveCount=maxCount;
+    await this.archiveOldAutosaveBackups();
+    return {maxCount};
   },
   setAutosaveBackupLimit(limit){
     XState.autosaveBackupLimit=Math.max(0,Math.floor(Number(limit)||0));
@@ -15978,8 +16083,9 @@ const XFiles = {
     }
   },
 
-  async autosave(writeFolderBackup){
-    if(!XState.autosaveEnabled || XState.autosaveMinutes <= 0) return;
+  async autosave(writeFolderBackup, options){
+    if(!XState.autosaveEnabled || XState.autosaveMinutes <= 0) return false;
+    const opts=options || {};
 
     try{
       const payload=this.payload();
@@ -16007,9 +16113,11 @@ const XFiles = {
       }else{
         if(XDom.autosaveStatus) XDom.autosaveStatus.textContent='Local autosave at '+XState.autosaveLastSavedAt;
       }
+      return true;
     }catch(err){
-      if(XDom.autosaveStatus) XDom.autosaveStatus.textContent='Autosave failed';
+      if(XDom.autosaveStatus) XDom.autosaveStatus.textContent=opts.idleFinal ? 'Final inactivity autosave failed' : 'Autosave failed';
       console.warn('Autosave failed', err);
+      return false;
     }
   },
 
@@ -16033,7 +16141,7 @@ const XFiles = {
     }
 
     if(XState.autosavePausedForIdle){
-      if(XDom.autosaveStatus) XDom.autosaveStatus.textContent='Autosave paused after 5 min inactivity; resumes with app activity';
+      if(XDom.autosaveStatus) XDom.autosaveStatus.textContent='Autosave paused after final 5-minute inactivity save; resumes with app activity';
       return;
     }
 
@@ -16152,6 +16260,7 @@ const XFiles = {
     if(XDom.autosaveBackupLimit){
       XDom.autosaveBackupLimit.onchange=()=>this.setAutosaveBackupLimit(XDom.autosaveBackupLimit.value);
     }
+    this.configureProjectSaveUi();
     this.restoreAutosaveInterval();
   }
 };
