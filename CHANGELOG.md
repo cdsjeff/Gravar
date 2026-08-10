@@ -1,5 +1,20 @@
 # Gravar Changelog
 
+## v0.6.180 — Current Version Metadata
+
+- Centralized the current Gravar version and release description in the application code.
+- Updated the browser title, About information, Help information, saved-project metadata, and V-Clip metadata to identify Gravar v0.6.180 consistently.
+- Updated the source header to describe the current release rather than an obsolete v0.5.2 maintenance build.
+- Current resource ZIP now includes an identical deployment copy of the standalone app named `index.html` for GitHub Pages and other static web hosting.
+
+## v0.6.179 — Native .dote File Recognition
+
+- Repaired MacWhisper DOTE import for files using the native `.dote` filename extension.
+- The DOTE file chooser now accepts `.dote` as well as `.json`.
+- Also accepts common JSON/text MIME types used by browsers for `.dote` files.
+- The DOTE parser itself was already compatible: the supplied `.dote` file is valid JSON with a top-level `lines` array and 48 transcript lines.
+- No transcript-field mapping behavior was changed.
+
 ## v0.6.178 — Waveform Calibration Import in Project / Import
 
 - Added **Waveform calibration** to **Files → Import**.

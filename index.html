@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.5.2 Public Audit Optimization
+Gravar v0.6.180 — Current Version Metadata
 Single-file web app with modular internal architecture.
 
-Public-use maintenance update:
-- Preserves v0.5.1 saved-project media restore compatibility.
-- Cleans stale XTrans-facing project metadata and portable filenames.
-- Aligns frame-shift default with the visible Vspeed selector.
-- Hardens optional legacy frame-speed indicator handling.
+Current release highlights:
+- Native MacWhisper .dote transcript import.
+- Waveform calibration recovery/import from prior Gravar projects.
+- Selected-waveform onset/offset insertion for Command–Option waveform selection.
+- Point-specific waveform calibration Undo.
+- Waveform selection Play preview before insertion.
+- Option–Return transcript-line splitting.
+- Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
 
 Modules:
 - XState
@@ -28,7 +31,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.179 DOTE Extension Fix</title>
+<title>Gravar — Version 0.6.180 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -2999,6 +3002,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.180 — Standalone Web. Native .dote import, waveform calibration recovery/import, selected-waveform timing insertion, Point Undo, waveform selection preview, and transcript-line splitting are included in the current build.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3018,6 +3022,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.180 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3537,6 +3542,7 @@ input[type=reset],
 /* Gravar V0.6.168: adds Files → Import → DOTE for direct MacWhisper DOTE JSON transcript import. */
 /* Gravar V0.6.169: normalizes default imported speaker labels from Speaker n to Spkr n across DOTE, TSV, and ELAN imports. */
 /* Gravar V0.6.179: accepts native .dote files in the DOTE file chooser; MacWhisper .dote files are JSON text but were previously hidden by the .json-only accept filter. */
+/* Gravar V0.6.180: centralizes current-version description in XBuild and propagates it to title, About, Help, project metadata, and V-Clip metadata so release identity stays synchronized. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3546,8 +3552,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.179',
-  label: 'Electron Desktop & Web',
+  version: '0.6.180',
+  label: 'Standalone Web',
+  description: 'Native .dote import; waveform calibration recovery/import; selected-waveform onset/offset insertion; Point Undo; waveform selection preview; Option–Return transcript-line split.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -3556,6 +3563,9 @@ const XBuild = Object.freeze({
   },
   readyStatus(){
     return this.displayName()+' ready.';
+  },
+  releaseSummary(){
+    return this.displayName()+'. '+this.description;
   }
 });
 
@@ -4213,7 +4223,13 @@ const XStatus = {
     XDom.status.textContent=message;
   },
   buildReady(){
-    if(typeof document !== 'undefined' && typeof XBuild !== 'undefined') document.title=XBuild.title();
+    if(typeof document !== 'undefined' && typeof XBuild !== 'undefined'){
+      document.title=XBuild.title();
+      const aboutVersion=document.getElementById('aboutCurrentVersion');
+      const helpVersion=document.getElementById('helpCurrentVersion');
+      if(aboutVersion) aboutVersion.innerHTML='<strong>Current version:</strong> '+XBuild.releaseSummary();
+      if(helpVersion) helpVersion.innerHTML='<strong>Current version:</strong> '+XBuild.displayName()+'.';
+    }
     this.set((typeof XBuild !== 'undefined' && XBuild.readyStatus) ? XBuild.readyStatus() : 'Gravar ready.');
   },
   file(name){
@@ -13861,7 +13877,7 @@ const XFiles = {
     // Commit active Code and rich-text Line Note HTML before project save or autosave so Line Note formatting persists across reloads.
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
     return {
-      appVersion:'Gravar_v0.6.179_standalone_web',
+      appVersion:'Gravar_v'+XBuild.version+'_standalone_web',
       projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true},
       projectName:XState.projectName || '',
       logHtml:(XDom.log ? XRichText.htmlFrom(XDom.log) : (XState.logHtml||'')),
@@ -15320,7 +15336,7 @@ const XFiles = {
       kind:'video-clip-spec',
       format:'gravar-video-clip-spec',
       app:'Gravar',
-      appVersion:'0.6.168',
+      appVersion:XBuild.version,
       createdAt:new Date().toISOString(),
       projectName:XState.projectName||this.projectBaseName(),
       projectBaseName:this.projectBaseName(),
