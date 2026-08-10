@@ -28,7 +28,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.178 Waveform Calibration Project Import</title>
+<title>Gravar — Version 0.6.179 DOTE Extension Fix</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -2887,7 +2887,7 @@ input[type=reset],
 </div>
 <div class="files-submenu-panel" data-files-panel="import">
 <label class="filebtn" for="tsvFile">Load TSV</label><input accept=".tsv,text/tab-separated-values,text/plain" id="tsvFile" title="Load TSV transcript" type="file"/>
-<label class="filebtn" for="doteFile" title="Import a MacWhisper DOTE JSON transcript">DOTE</label><input accept=".json,application/json" id="doteFile" title="Import a MacWhisper DOTE JSON transcript" type="file"/>
+<label class="filebtn" for="doteFile" title="Import a MacWhisper DOTE JSON transcript">DOTE</label><input accept=".dote,.json,application/json,text/plain,application/octet-stream" id="doteFile" title="Import a MacWhisper DOTE JSON transcript" type="file"/>
 <label class="filebtn" for="appendProjectFile" title="Append rows from another Gravar project JSON without replacing the current project">Append project</label><input accept=".json,application/json" id="appendProjectFile" title="Append rows from another Gravar project JSON" type="file"/>
 <label class="filebtn" for="elanTsvFile" title="Transform an ELAN TSV/tab-delimited export and load it into Gravar">Load ELAN TSV</label><input accept=".tsv,.txt,text/tab-separated-values,text/plain" id="elanTsvFile" title="Load ELAN TSV/tab-delimited export" type="file"/>
 <label class="filebtn" for="videoFile">Load video</label><input accept="video/*" id="videoFile" title="Load primary video file" type="file"/>
@@ -3536,6 +3536,7 @@ input[type=reset],
 /* Gravar V0.6.167: changes Line Note shortcut to Command/Ctrl-/ and converts transcript rows beginning with // to Comment rows on Command/Ctrl-Return. */
 /* Gravar V0.6.168: adds Files → Import → DOTE for direct MacWhisper DOTE JSON transcript import. */
 /* Gravar V0.6.169: normalizes default imported speaker labels from Speaker n to Spkr n across DOTE, TSV, and ELAN imports. */
+/* Gravar V0.6.179: accepts native .dote files in the DOTE file chooser; MacWhisper .dote files are JSON text but were previously hidden by the .json-only accept filter. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3545,7 +3546,7 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.178',
+  version: '0.6.179',
   label: 'Electron Desktop & Web',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
@@ -13860,7 +13861,7 @@ const XFiles = {
     // Commit active Code and rich-text Line Note HTML before project save or autosave so Line Note formatting persists across reloads.
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
     return {
-      appVersion:'Gravar_v0.6.178_electron_desktop_web',
+      appVersion:'Gravar_v0.6.179_standalone_web',
       projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true},
       projectName:XState.projectName || '',
       logHtml:(XDom.log ? XRichText.htmlFrom(XDom.log) : (XState.logHtml||'')),
