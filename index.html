@@ -28,7 +28,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.175 Waveform Preview</title>
+<title>Gravar — Version 0.6.178 Waveform Calibration Project Import</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -2893,6 +2893,7 @@ input[type=reset],
 <label class="filebtn" for="videoFile">Load video</label><input accept="video/*" id="videoFile" title="Load primary video file" type="file"/>
 <label class="filebtn" for="secondaryVideoFile">Load V2</label><input accept="video/*" id="secondaryVideoFile" title="Load secondary synchronized video file" type="file"/>
 <label class="filebtn" for="audioFile">Load WAV</label><input accept="audio/wav,audio/x-wav,audio/*" id="audioFile" title="Load external WAV/audio file for waveform and synchronized playback" type="file"/>
+<label class="filebtn" for="waveCalibrationImportFile" title="Import only waveform alignment/calibration from an older Gravar project JSON. Current transcript, media assignment, codes, notes, and other project settings are not replaced.">Waveform calibration</label>
 </div>
 <div class="files-submenu-panel" data-files-panel="export">
 <button id="saveTsv" title="Export TSV plain-text transcript">TSV</button>
@@ -2976,6 +2977,7 @@ input[type=reset],
 <button class="soft" id="waveDriftCalibrate" title="Add/update a saved waveform calibration point at the current time using the current nudge as the remaining correction.">Point</button>
 <button class="soft" id="waveDriftClear" title="Clear saved absolute and multi-point waveform calibration; keep temporary nudge unchanged.">Clear</button>
 <button class="soft wave-point-undo-btn" id="waveDriftUndo" title="Undo the most recent Point command and restore the temporary waveform nudge used for it." disabled>Undo</button>
+<label class="filebtn soft" for="waveCalibrationImportFile" id="waveCalibrationImport" title="Import only waveform alignment/calibration from an older Gravar project JSON. Current transcript, media assignment, codes, notes, and other project settings are not replaced.">Import</label><input accept=".json,application/json" id="waveCalibrationImportFile" title="Choose an older Gravar project JSON from which to recover waveform calibration" type="file"/>
 </div>
 </div></div><div class="format-pane hidden" id="videoControlsPane"><div class="left-pane-title"><span class="left-pane-title-text">Video</span><button class="pane-help-btn" data-pane-help="video" title="Video pane help">?</button></div><div class="controls-section-title video-rollup-title video-gestures-title" id="videoGesturesTitle" role="button" tabindex="0" aria-controls="videoGesturesPanel" aria-expanded="false" title="Show or hide gestures"><span>Gestures</span><button class="video-rollup-toggle" id="videoGesturesRollupToggle" type="button" title="Show gestures">▸</button></div><div class="video-gesture-note video-rollup-panel rolled-up" id="videoGesturesPanel" title="Hover over either video for its available zoom, pan, and scrub gestures.">Hover over videos for zoom, pan and scrub help</div><div class="controls-section-title video-adjustments-title" id="videoAdjustmentsTitle" role="button" tabindex="0" aria-controls="videoAdjustmentsPanel" aria-expanded="false" title="Show or hide adjustment sliders"><span>Adjustments</span><button class="video-adjust-rollup-toggle video-rollup-toggle" id="videoAdjustRollupToggle" type="button" title="Show adjustment sliders">▸</button></div><div class="video-adjust-rollup-summary" id="videoAdjustRollupSummary" title=""></div><div class="video-display-adjustments rolled-up dual-video-adjustments" id="videoAdjustmentsPanel" title="Separate live display adjustments for V1 and V2. These are saved in the project and exported in V-Clip specs."><div class="video-adjust-link-row" title="When linked, moving any V1 or V2 adjustment applies the same value to both videos."><label><input id="videoAdjustLink" type="checkbox"/> Link V1/V2 adjustments</label><button class="soft" id="videoAdjustReset" title="Reset V1 and V2 Bright and Contrast to 50 and Color/RGB to 100%">Reset both</button></div><div class="video-adjust-columns"><div class="video-adjust-bank" data-video-adjust-role="v1"><div class="video-adjust-bank-title">V1</div><label class="video-adjust-row compact" for="videoV1BrightnessRange"><span class="video-adjust-label">Bright</span><input id="videoV1BrightnessRange" data-video-role="v1" data-video-adjust-key="brightness" type="range" min="0" max="100" step="1" value="50"/><span class="video-adjust-value" id="videoV1BrightnessValue">50</span></label><label class="video-adjust-row compact" for="videoV1ContrastRange"><span class="video-adjust-label">Contrast</span><input id="videoV1ContrastRange" data-video-role="v1" data-video-adjust-key="contrast" type="range" min="0" max="100" step="1" value="50"/><span class="video-adjust-value" id="videoV1ContrastValue">50</span></label><label class="video-adjust-row compact" for="videoV1ColorRange"><span class="video-adjust-label">Color</span><input id="videoV1ColorRange" data-video-role="v1" data-video-adjust-key="color" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV1ColorValue">100%</span></label><label class="video-adjust-row compact" for="videoV1RedRange"><span class="video-adjust-label">Red</span><input id="videoV1RedRange" data-video-role="v1" data-video-adjust-key="red" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV1RedValue">100%</span></label><label class="video-adjust-row compact" for="videoV1GreenRange"><span class="video-adjust-label">Green</span><input id="videoV1GreenRange" data-video-role="v1" data-video-adjust-key="green" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV1GreenValue">100%</span></label><label class="video-adjust-row compact" for="videoV1BlueRange"><span class="video-adjust-label">Blue</span><input id="videoV1BlueRange" data-video-role="v1" data-video-adjust-key="blue" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV1BlueValue">100%</span></label></div><div class="video-adjust-bank" data-video-adjust-role="v2"><div class="video-adjust-bank-title">V2</div><label class="video-adjust-row compact" for="videoV2BrightnessRange"><span class="video-adjust-label">Bright</span><input id="videoV2BrightnessRange" data-video-role="v2" data-video-adjust-key="brightness" type="range" min="0" max="100" step="1" value="50"/><span class="video-adjust-value" id="videoV2BrightnessValue">50</span></label><label class="video-adjust-row compact" for="videoV2ContrastRange"><span class="video-adjust-label">Contrast</span><input id="videoV2ContrastRange" data-video-role="v2" data-video-adjust-key="contrast" type="range" min="0" max="100" step="1" value="50"/><span class="video-adjust-value" id="videoV2ContrastValue">50</span></label><label class="video-adjust-row compact" for="videoV2ColorRange"><span class="video-adjust-label">Color</span><input id="videoV2ColorRange" data-video-role="v2" data-video-adjust-key="color" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV2ColorValue">100%</span></label><label class="video-adjust-row compact" for="videoV2RedRange"><span class="video-adjust-label">Red</span><input id="videoV2RedRange" data-video-role="v2" data-video-adjust-key="red" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV2RedValue">100%</span></label><label class="video-adjust-row compact" for="videoV2GreenRange"><span class="video-adjust-label">Green</span><input id="videoV2GreenRange" data-video-role="v2" data-video-adjust-key="green" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV2GreenValue">100%</span></label><label class="video-adjust-row compact" for="videoV2BlueRange"><span class="video-adjust-label">Blue</span><input id="videoV2BlueRange" data-video-role="v2" data-video-adjust-key="blue" type="range" min="0" max="200" step="1" value="100"/><span class="video-adjust-value" id="videoV2BlueValue">100%</span></label></div></div></div><div class="controls-section-title video-rollup-title video-tools-popout-title" id="videoToolsPopoutTitle" role="button" tabindex="0" aria-controls="videoToolsPopoutPanel" aria-expanded="false" title="Show or hide tools and pop-out controls"><span>Tools &amp; Pop-out</span><button class="video-rollup-toggle" id="videoToolsPopoutRollupToggle" type="button" title="Show tools and pop-out controls">▸</button></div><div class="video-rollup-panel video-tools-popout-panel rolled-up" id="videoToolsPopoutPanel"><div class="controls-subgrid video-tools-grid"><button class="soft" id="captureFrameBtn" title="Capture a frame clip from V1, V2, or both videos as a PNG. Saves to FrameClips/[Project] after Workspace Setup, otherwise to the authorized Project folder or download fallback.">Fr-Clip</button><button class="soft" id="exportVideoClip" title="Save a V-CLIP JSON spec containing selected start/end times plus FFmpeg crop/scale/filter recipes for current zoom, pan, brightness, contrast, color, and RGB settings. After Workspace Setup, saves to VideoClips/[Project]; otherwise asks for a V-CLIP folder.">V-Clip</button><button class="soft" id="primaryVideoVisibleToggle" title="Show or hide V1 in the main video pane. Playback, timing, waveform, and pop-out behavior are unchanged.">V1 visible</button><button class="soft" id="secondaryVideoVisibleToggle" title="Show or hide the secondary video in the main video pane. The video pop-out can still show V2.">V2 visible</button></div><div class="controls-subgrid video-popout-grid"><button class="soft" id="videoPopout" title="Video Pop toggles the synchronized V1/V2 video pop-out on and off. In the pop-out: F fullscreen, Shift-Space play/pause, Command/Ctrl-Arrow transport shortcuts.">Pop</button><label class="video-popout-stack-option" title="Stack V1 above V2 in both the main video pane and the video pop-out when both videos are loaded. Uncheck to return both displays to side-by-side layout."><input id="stackVideosPopout" type="checkbox"/> Stack</label><label class="video-popout-controls-option" title="Attach compact waveform, transport, video, and waveform controls to the Video pop-out. Shortcuts in the pop-out: Shift-Space play/pause; Command/Ctrl-Left/Right = 0.1 sec; Command/Ctrl-Shift-Left/Right = 1 sec; F = fullscreen."><input id="attachVideoPopoutControls" type="checkbox" checked/> Controls</label></div></div></div><div class="format-pane hidden" id="spkrPane"><div class="left-pane-title"><span class="left-pane-title-text">Transcript</span><button class="pane-help-btn" data-pane-help="transcript" title="Transcript pane help">?</button></div><div aria-label="Transcript submenu" class="transcript-submenu-tabs" role="tablist"><button class="soft transcript-submenu-tab active" data-transcript-submenu="format" type="button">Format</button><button class="soft transcript-submenu-tab" data-transcript-submenu="popout" type="button">Pop-out</button><button class="soft transcript-submenu-tab" data-transcript-submenu="find" type="button">Find &amp; Replace</button></div><div class="transcript-submenu-content"><div class="transcript-submenu-panel active" data-transcript-panel="format"><div class="format-grid" title="Format selected text in the active Speaker or Transcript field">
 <button class="soft format-btn" id="fmtBold" title="Bold selected Speaker/Transcript text"><b>B</b></button>
@@ -3067,6 +3069,7 @@ input[type=reset],
 <li><strong>Frame:</strong> selects whole-video or fixed display windows such as 10 sec, 5 sec, or 2 sec.</li>
 <li><strong>Temporary nudge:</strong> moves the displayed waveform without saving the correction.</li>
 <li><strong>Absolute / Point / Clear:</strong> save an absolute offset, add calibration points for drift, or clear saved calibration.</li>
+<li><strong>Import:</strong> recover only waveform alignment/calibration from an older Gravar project JSON. The current transcript, media, codes, notes, and other project settings remain unchanged.</li>
 <li><strong>Calibration card:</strong> the Waveform calibration controls use left and right blue hairlines for visual separation.</li>
 </ul>
 <h3>Transcript editing and timing</h3>
@@ -3393,6 +3396,9 @@ input[type=reset],
 
 /* Gravar V0.6.173: Option-Return splits the focused transcript line at the text cursor into two adjacent rows in the main transcript and transcript pop-out. */
 /* Gravar V0.6.175: adds Play to the Command/Ctrl-Option/Alt waveform-drag Insert dialog so the selected interval can be previewed before insertion in both the main window and video pop-out. */
+/* Gravar V0.6.176: snapshots the waveform drag onset/offset in the Insert dialog and constructs the new row directly from that interval, preventing active/previous-row timing from leaking into Start/Stop. */
+/* Gravar V0.6.177: adds Waveform calibration Import, allowing saved alignment fields to be recovered from an older Gravar project JSON without replacing the current transcript or project configuration. */
+/* Gravar V0.6.178: exposes the same waveform-calibration recovery action in Files > Import via a Waveform calibration button. */
 /* Gravar V0.6.53: Repairs transcript pop-out sync(options) ReferenceError that prevented row payload rendering. */
 /* Gravar V0.6.34: adds drag reordering of transcript rows and Transcript > Find & Replace > sort-Start chronological sorting. */
 /* Gravar V0.6.33: repairs standard TSV versus ELAN TSV detection so header words cannot be misread as zero-second time values. */
@@ -3539,7 +3545,7 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.175',
+  version: '0.6.178',
   label: 'Electron Desktop & Web',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
@@ -3846,6 +3852,8 @@ const XDom = {
     this.waveDriftCalibrate=this.q('waveDriftCalibrate');
     this.waveDriftClear=this.q('waveDriftClear');
     this.waveDriftUndo=this.q('waveDriftUndo');
+    this.waveCalibrationImport=this.q('waveCalibrationImport');
+    this.waveCalibrationImportFile=this.q('waveCalibrationImportFile');
     this.timeRows=this.q('timeRows');
     this.transcriptRows=this.q('transcriptRows');
     this.talkTab=this.q('talkTab');
@@ -12497,6 +12505,96 @@ const XWaveform = {
     XStatus.set('Undid the last waveform Point command. Restored '+XState.waveformCalibrationPoints.length+' saved point'+(XState.waveformCalibrationPoints.length===1?'':'s')+' and the temporary nudge '+(XState.waveformOffsetSeconds>=0?'+':'')+XState.waveformOffsetSeconds.toFixed(3)+' sec.');
   },
 
+  extractCalibrationFromProjectData(data){
+    if(!data || Array.isArray(data) || typeof data !== 'object') return null;
+
+    const hasModernAbs=typeof data.waveformAbsoluteOffsetSeconds === 'number' && Number.isFinite(data.waveformAbsoluteOffsetSeconds);
+    const hasModernPoints=Array.isArray(data.waveformCalibrationPoints);
+    const hasLegacyAnchor=typeof data.waveformDriftAnchorTime === 'number' && Number.isFinite(data.waveformDriftAnchorTime) &&
+      typeof data.waveformDriftAnchorOffset === 'number' && Number.isFinite(data.waveformDriftAnchorOffset);
+    const hasLegacyOffset=typeof data.waveformOffsetSeconds === 'number' && Number.isFinite(data.waveformOffsetSeconds);
+
+    if(!hasModernAbs && !hasModernPoints && !hasLegacyAnchor && !hasLegacyOffset) return null;
+
+    let absoluteOffset=hasModernAbs ? this.clampCalibrationOffset(data.waveformAbsoluteOffsetSeconds) : 0;
+    let points=[];
+    let migratedLegacyOffset=false;
+    let migratedLegacyAnchor=false;
+
+    if(hasModernPoints){
+      points=data.waveformCalibrationPoints.map(point=>({
+        time:Math.max(0,Number(point&&point.time)||0),
+        offset:this.clampCalibrationOffset(Number(point&&point.offset)||0)
+      })).filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.offset));
+    }
+
+    // Older Gravar projects used one drift anchor before the multi-point model.
+    if(!points.length && hasLegacyAnchor && Math.abs(Number(data.waveformDriftAnchorOffset)||0)>0.0005){
+      points=[{
+        time:Math.max(0,Number(data.waveformDriftAnchorTime)||0),
+        offset:this.clampCalibrationOffset(data.waveformDriftAnchorOffset)
+      }];
+      migratedLegacyAnchor=true;
+    }
+
+    // In still older projects waveformOffsetSeconds was the only stored
+    // alignment value. Treat it as a saved absolute offset only when no newer
+    // absolute or multi-point calibration fields are present.
+    if(!hasModernAbs && !hasModernPoints && hasLegacyOffset){
+      absoluteOffset=this.clampCalibrationOffset(data.waveformOffsetSeconds);
+      migratedLegacyOffset=true;
+    }
+
+    const normalized=points
+      .filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.offset))
+      .sort((a,b)=>a.time-b.time);
+
+    return {absoluteOffset, points:normalized, migratedLegacyOffset, migratedLegacyAnchor};
+  },
+
+  async importCalibrationFile(file){
+    if(!file) return false;
+    try{
+      const data=JSON.parse(await file.text());
+      const recovered=this.extractCalibrationFromProjectData(data);
+      if(!recovered){
+        alert('No waveform calibration information was found in that JSON file. Choose a saved Gravar project that contains waveform alignment data.');
+        XStatus.set('Waveform calibration import stopped: no recoverable calibration fields were found.');
+        return false;
+      }
+
+      const existingActive=this.driftIsActive() || Math.abs(Number(XState.waveformOffsetSeconds)||0)>0.001;
+      if(existingActive){
+        const ok=confirm('Replace the current waveform calibration with the alignment recovered from '+(file.name||'this project JSON')+'?\n\nOnly waveform calibration will be replaced. The current transcript and other project settings will remain unchanged.');
+        if(!ok){
+          XStatus.set('Waveform calibration import cancelled.');
+          return false;
+        }
+      }
+
+      XState.waveformAbsoluteOffsetSeconds=this.clampCalibrationOffset(recovered.absoluteOffset);
+      XState.waveformCalibrationPoints=recovered.points.map(point=>({time:point.time,offset:this.clampCalibrationOffset(point.offset)}));
+      XState.waveformOffsetSeconds=0;
+      XState.waveformLastPointUndo=null;
+      XState.waveformDriftAnchorTime=0;
+      XState.waveformDriftAnchorOffset=0;
+      this.updateOffsetLabel();
+      this.draw();
+      XFiles.autosave();
+
+      const notes=[];
+      if(recovered.migratedLegacyOffset) notes.push('legacy waveform offset migrated to Absolute');
+      if(recovered.migratedLegacyAnchor) notes.push('legacy drift anchor migrated to a calibration Point');
+      XStatus.set('Recovered waveform calibration from '+(file.name||'project JSON')+': '+this.calibrationSummary()+'. Temporary nudge reset to 0.0 sec.'+(notes.length?' '+notes.join('; ')+'.':''));
+      return true;
+    }catch(err){
+      console.error('Waveform calibration import failed.',err);
+      alert('Could not import waveform calibration. Choose a valid Gravar project JSON file.');
+      XStatus.set('Waveform calibration import failed.');
+      return false;
+    }
+  },
+
   clearDriftCalibration(){
     XState.waveformAbsoluteOffsetSeconds=0;
     XState.waveformCalibrationPoints=[];
@@ -12665,6 +12763,15 @@ const XWaveform = {
       };
     }
 
+    if(XDom.waveCalibrationImportFile){
+      XDom.waveCalibrationImportFile.onchange=async e=>{
+        e.stopPropagation();
+        const file=e.target.files && e.target.files[0];
+        await this.importCalibrationFile(file);
+        e.target.value='';
+      };
+    }
+
     if(XDom.waveOffsetInd){
       XDom.waveOffsetInd.onclick=e=>{
         e.stopPropagation();
@@ -12801,7 +12908,7 @@ const XWaveform = {
     this.pendingInsertPopover=null;
     try{ document.removeEventListener('keydown',pending.keyHandler,true); }catch(err){}
     try{ if(pending.el && pending.el.parentNode) pending.el.parentNode.removeChild(pending.el); }catch(err){}
-    if(typeof pending.resolve === 'function') pending.resolve(result||{action:'cancel',text:''});
+    if(typeof pending.resolve === 'function') pending.resolve(result||{action:'cancel',text:'',start:pending.start,end:pending.end});
   };
 
   XWaveform.positionInsertPopover = function(el,clientX,clientY){
@@ -12905,7 +13012,7 @@ const XWaveform = {
       const cancel=pop.querySelector('.waveform-insert-cancel');
       const finish=(action)=>{
         const text=field ? field.value : '';
-        this.removeInsertPopover({action,text});
+        this.removeInsertPopover({action,text,start,end});
       };
       const keyHandler=(event)=>{
         if(!this.pendingInsertPopover || this.pendingInsertPopover.el!==pop) return;
@@ -12943,12 +13050,27 @@ const XWaveform = {
       XStatus.set('Transcript tools are not ready. Could not create waveform interval row.');
       return null;
     }
+    start=Math.max(0,Number(start)||0);
+    end=Math.max(start,Number(end)||start);
     const scroll=(typeof XTranscript.captureScroll === 'function') ? XTranscript.captureScroll() : null;
     XUndo.push('Add waveform interval row');
-    const row=XTranscript.createRow(XUtils.formatTime(start));
-    row.end=XUtils.formatTime(end);
-    row.duration=XUtils.formatDurationValue(duration);
-    row.transcript=this.escapeTranscriptText(text||'');
+    // Build the row directly from the frozen waveform interval. Do not use the
+    // active row or add-below helpers, because those may inherit the previous
+    // transcript line's timing.
+    const row={
+      id:XUtils.id(),
+      rowType:'transcript',
+      start:XUtils.formatTime(start),
+      end:XUtils.formatTime(end),
+      duration:XUtils.formatDurationValue(end-start),
+      speaker:'',
+      transcript:this.escapeTranscriptText(text||''),
+      talkAction:'',
+      notes:'',
+      lineRole:'parent',
+      parentRowId:'',
+      childTier:null
+    };
     if(typeof XTranscript.insertRowChronologically === 'function') XTranscript.insertRowChronologically(row);
     else XState.rows.push(row);
     if(typeof XTranscript.retagChildLines === 'function') XTranscript.retagChildLines();
@@ -12974,7 +13096,7 @@ const XWaveform = {
       XStatus.set('Waveform interval row creation canceled. No transcript row was added.');
       return;
     }
-    this.insertTranscriptLineFromDrag(start,end,result.text||'');
+    this.insertTranscriptLineFromDrag(result.start,result.end,result.text||'');
   };
 })();
 
@@ -13112,7 +13234,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','Rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier. Rows whose Transcript text begins with a single ( are parent tiers. When checked, italic Speaker rows can also be child tiers.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values. When unchecked, parent timecodes are inserted only when a child tier is first created.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -13738,7 +13860,7 @@ const XFiles = {
     // Commit active Code and rich-text Line Note HTML before project save or autosave so Line Note formatting persists across reloads.
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
     return {
-      appVersion:'Gravar_v0.6.175_electron_desktop_web',
+      appVersion:'Gravar_v0.6.178_electron_desktop_web',
       projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true},
       projectName:XState.projectName || '',
       logHtml:(XDom.log ? XRichText.htmlFrom(XDom.log) : (XState.logHtml||'')),
@@ -17318,7 +17440,7 @@ function removePopWaveInsertPopover(result){
   popWaveInsertPopover=null;
   try{document.removeEventListener('keydown',pending.keyHandler,true);}catch(err){}
   try{if(pending.el&&pending.el.parentNode) pending.el.parentNode.removeChild(pending.el);}catch(err){}
-  if(typeof pending.resolve==='function') pending.resolve(result||{action:'cancel',text:''});
+  if(typeof pending.resolve==='function') pending.resolve(result||{action:'cancel',text:'',start:pending.start,end:pending.end});
 }
 function positionPopWaveInsertPopover(el,clientX,clientY){
   if(!el) return;
@@ -17357,7 +17479,7 @@ function promptPopWaveTranscriptText(start,end,anchor){
     const finish=(action)=>{
       const text=field?field.value:'';
       sendToMain({type:'video-popout-command',command:'stopWaveformPreview'});
-      removePopWaveInsertPopover({action,text});
+      removePopWaveInsertPopover({action,text,start,end});
     };
     const keyHandler=(event)=>{
       if(!popWaveInsertPopover||popWaveInsertPopover.el!==pop) return;
@@ -17705,7 +17827,7 @@ if(popWaveform){
       drawPopWaveform();
       promptPopWaveTranscriptText(start,end,{clientX:event.clientX,clientY:event.clientY}).then(result=>{
         if(result && result.action==='insert'){
-          sendToMain({type:'video-popout-command',command:'waveformComplete',currentTime:end,start:start,end:end,mode:mode,moved:moved,source:'video-popout-waveform',insertConfirmed:true,insertText:result.text||''});
+          sendToMain({type:'video-popout-command',command:'waveformComplete',currentTime:result.end,start:result.start,end:result.end,mode:mode,moved:moved,source:'video-popout-waveform',insertConfirmed:true,insertText:result.text||''});
         }else{
           sendToMain({type:'video-popout-command',command:'waveformInsertCanceled',source:'video-popout-waveform'});
         }
