@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.180 — Current Version Metadata
+Gravar v0.6.185 — Force PT Explicit Only
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -11,6 +11,8 @@ Current release highlights:
 - Point-specific waveform calibration Undo.
 - Waveform selection Play preview before insertion.
 - Option–Return transcript-line splitting.
+- Parentheses-based parent/child tier interpretation is active only when CA → Child tiers is turned on.
+- Force PT timecodes is now the sole trigger for copying parent Start/Stop/Duration to child tiers, including double-parentheses child tiers.
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
 
 Modules:
@@ -31,7 +33,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.180 Standalone Web</title>
+<title>Gravar — Version 0.6.185 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -444,6 +446,8 @@ text-align:center;font:bold 12px "Courier New",Courier,monospace;line-height:1;p
   linear-gradient(to right, transparent 0%, transparent 30%, #f8fafc 30%, #f8fafc 70%, transparent 70%, transparent 100%),
   linear-gradient(to bottom, transparent calc(50% - .5px), #cfd9e6 calc(50% - .5px), #cfd9e6 calc(50% + .5px), transparent calc(50% + .5px));
 text-align:center;font:bold 12px "Courier New",Courier,monospace;line-height:1;padding:3px 6px;color:#334155}
+.talk-code-section-toggle{display:inline-block;width:14px;min-width:14px;margin-right:3px;font:11px/1 "Courier New",Courier,monospace;color:#64748b;text-align:center;vertical-align:1px}
+.talk-code-section.collapsed .talk-code-section-label{opacity:.82}
 
 /* V0.6.35: Code style controls and transcript-line code markers. */
 /* V0.6.37: Code selection uses code-colored borders; code markers move to the right indicator strip and Note marker becomes a black diamond with red tip. */
@@ -2835,6 +2839,15 @@ input[type=reset],
 .pop-speed-menu button{
   border-radius:5px!important;
 }
+
+/* V0.6.183: repairs Code-filter initialization by keeping filter methods on XTalkActionPalette, the object that owns the Code-pane UI. */
+.talk-code-filter-toggle.active{background:#0f172a!important;color:#fff!important;border-color:#0f172a!important}
+.talk-code-filter-panel{display:none;gap:6px;align-items:center;flex-wrap:wrap;padding:5px 6px;margin:4px 0 6px;border:1px solid var(--line2);border-radius:8px;background:#f8fafc;font-size:11px}
+.talk-code-filter-panel.open{display:flex}
+.talk-code-filter-panel label{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.talk-code-filter-panel input{margin:0}
+.talk-code-filter-summary{font-size:10px;color:#475569;white-space:nowrap}
+.talk-code-button.filter-selected{outline:2px solid #2563eb;outline-offset:-2px;background:#eff6ff!important}
 </style>
 </head>
 <body>
@@ -2991,7 +3004,7 @@ input[type=reset],
 <button class="soft format-color-swatch" id="fmtGrey" title="Color selected Speaker/Transcript text medium grey">Grey</button>
 <button class="soft format-color-swatch" id="fmtBlack" title="Color selected Speaker/Transcript text black">Black</button>
 <button class="soft format-btn" id="fmtClear" title="Clear formatting from selected Speaker/Transcript text">Clear</button>
-</div><div class="transcript-fields-row transcript-font-targets" title="Set the transcript text font size."><label class="transcript-font-radio" title="Set transcript font to approximately 11.25 pt"><input checked="" id="transcriptFont11" name="transcriptFontSize" type="radio" value="15"/> 11</label><label class="transcript-font-radio" title="Set transcript font to 12 pt"><input id="transcriptFont12" name="transcriptFontSize" type="radio" value="16"/> 12</label><label class="transcript-font-radio" title="Set transcript font to 14 pt"><input id="transcriptFont14" name="transcriptFontSize" type="radio" value="18.667"/> 14</label></div><div class="transcript-stripe-options" title="Show or hide transcript/timing row bands, field borders, and field underlines in both the main transcript display and transcript pop-out."><label><input checked="" id="showTranscriptStripes" type="checkbox"/> Bands</label><label><input checked="" id="showTimeStripes" type="checkbox"/> Border</label><label><input checked="" id="showTranscriptUnderline" type="checkbox"/> Underline</label></div><div class="transcript-field-visibility-options" title="Show or hide timing fields in both the main transcript display and the transcript pop-out. The transcript column shifts left to sit next to the remaining visible fields."><label><input checked="" id="showStartField" type="checkbox"/> Start</label><label><input checked="" id="showEndField" type="checkbox"/> Stop</label><label><input checked="" id="showDurationField" type="checkbox"/> Dur</label><label><input checked="" id="showWordCountField" type="checkbox"/> Words</label><label><input checked="" id="showUtteranceCountField" type="checkbox"/> Utts</label><label><input checked="" id="showSpeakerField" type="checkbox"/> Speaker</label></div></div><div class="transcript-submenu-panel" data-transcript-panel="popout"><div class="controls-section-title"><span>Transcript pop-out</span></div><div class="controls-subgrid transcript-popout-controls"><button class="soft" id="popTranscript" title="Transcript pop-out: open editable synced transcript window with timing, speaker styling, code markers, group hairlines, row reordering, and shortcuts">Text Pop</button><button class="soft" id="bringTextFront" title="Bring transcript pop-out to front">Front</button><button class="soft" id="closeTextPop" title="Close transcript pop-out">Close</button></div><div class="transcript-popout-scale-row" title="Adjust only the transcript pop-out display scale. This does not change the main transcript font size."><span>Scale</span><button class="soft" id="popoutTextScaleDown" title="Make transcript pop-out text smaller">Text −</button><button class="soft scale-readout" id="popoutTextScaleReset" title="Reset transcript pop-out scale to 100%">100%</button><button class="soft" id="popoutTextScaleUp" title="Make transcript pop-out text larger">Text +</button></div><label class="main-transcript-hide-option hidden" id="hideMainTranscriptOption" title="Available only while the transcript pop-out is open. Hide the complete main transcript workspace, including timing/start-stop fields, because those fields remain available in the pop-out."><input id="hideMainTranscriptWhenPopout" type="checkbox"/> Hide main transcript</label></div><div class="transcript-submenu-panel" data-transcript-panel="find"><div class="controls-section-title"><span>Find &amp; Replace</span></div><div class="transcript-find-replace" title="Find and replace literal text in either the Speaker column or Transcript column."><div class="transcript-find-targets"><label><input id="findTargetSpeaker" name="findReplaceTarget" type="radio" value="speaker"/> Speaker</label><label><input checked="" id="findTargetTranscript" name="findReplaceTarget" type="radio" value="transcript"/> Transcript</label></div><div class="transcript-find-inputs"><input id="findText" placeholder="Find text" title="Literal text to find in the selected column" type="text"/><input id="replaceText" placeholder="Replace with" title="Replacement text for the selected column" type="text"/></div><div class="transcript-find-buttons"><button class="soft" id="findNextText" title="Find the next matching row in the selected column">Find</button><button class="soft" id="replaceOneText" title="Replace the next/current match in the selected column">Replace</button><button class="soft" id="replaceAllText" title="Replace all matches in the selected column. This can be undone with Command/Ctrl-Z.">Replace all</button><button class="soft" id="sortStartRows" title="Sort transcript rows chronologically by Start time. Rows with blank Start times move to the bottom; same-time rows keep their current order.">sort-Start</button></div></div></div></div></div><div class="format-pane hidden" id="caPane"><div class="left-pane-title"><span class="left-pane-title-text">CA</span><button class="pane-help-btn" data-pane-help="ca" title="CA pane help">?</button></div><div class="controls-section-title"><span>Parent / child tiers</span></div><div class="ca-child-options" title="Child tiers: italicized Speaker rows become child tiers linked to the just-prior parent tier. Parent tier timecodes are inserted only when a child tier is first created unless Force PT timecodes is checked."><label title="When on, italicized Speaker rows become child tiers under the just-prior parent tier."><input id="childSpeakerMode" type="checkbox"/> Child tiers</label><label title="When checked, force parent-tier Start/Stop/Dur values onto all following child tiers under that parent tier."><input id="forceParentTimecodes" type="checkbox"/> Force PT timecodes</label><label title="Remove numeric line numbers from child tiers. Parent tier numbering remains visible."><input id="removeChildTierNumbers" type="checkbox"/> Remove CT #</label><label title="Show lowercase ascending child-tier letters under each parent tier: a, b, c."><input id="addChildTierAbc" type="checkbox"/> add CT abc</label></div><div class="controls-section-title"><span>Transcript style</span></div><div class="format-grid ca-format-grid" title="Format selected text in the active Speaker or Transcript field"><button class="soft format-btn" id="caFmtBold" title="Bold selected Speaker/Transcript text"><b>B</b></button><button class="soft format-btn" id="caFmtItalic" title="Italicize selected Speaker/Transcript text"><i>I</i></button><button class="soft format-color-swatch" id="caFmtRed" title="Color selected Speaker/Transcript text red">Red</button><button class="soft format-color-swatch" id="caFmtBlue" title="Color selected Speaker/Transcript text blue">Blue</button><button class="soft format-color-swatch" id="caFmtGreen" title="Color selected Speaker/Transcript text green">Green</button><button class="soft format-color-swatch" id="caFmtGrey" title="Color selected Speaker/Transcript text medium grey">Grey</button><button class="soft format-color-swatch" id="caFmtBlack" title="Color selected Speaker/Transcript text black">Black</button><button class="soft format-btn" id="caFmtClear" title="Clear formatting from selected Speaker/Transcript text">Clear</button></div></div><div class="format-pane hidden cmt-pane" id="cmtPane"><div class="left-pane-title"><span class="left-pane-title-text">Comments</span><button class="pane-help-btn" data-pane-help="cmt" title="Comment pane help">?</button></div><div aria-hidden="true" class="cmt-pane-body"></div><div class="cmt-pane-bottom"><div class="controls-section-title"><span>Comment controls</span></div><div class="commentrow-controls">
+</div><div class="transcript-fields-row transcript-font-targets" title="Set the transcript text font size."><label class="transcript-font-radio" title="Set transcript font to approximately 11.25 pt"><input checked="" id="transcriptFont11" name="transcriptFontSize" type="radio" value="15"/> 11</label><label class="transcript-font-radio" title="Set transcript font to 12 pt"><input id="transcriptFont12" name="transcriptFontSize" type="radio" value="16"/> 12</label><label class="transcript-font-radio" title="Set transcript font to 14 pt"><input id="transcriptFont14" name="transcriptFontSize" type="radio" value="18.667"/> 14</label></div><div class="transcript-stripe-options" title="Show or hide transcript/timing row bands, field borders, and field underlines in both the main transcript display and transcript pop-out."><label><input checked="" id="showTranscriptStripes" type="checkbox"/> Bands</label><label><input checked="" id="showTimeStripes" type="checkbox"/> Border</label><label><input checked="" id="showTranscriptUnderline" type="checkbox"/> Underline</label></div><div class="transcript-field-visibility-options" title="Show or hide timing fields in both the main transcript display and the transcript pop-out. The transcript column shifts left to sit next to the remaining visible fields."><label><input checked="" id="showStartField" type="checkbox"/> Start</label><label><input checked="" id="showEndField" type="checkbox"/> Stop</label><label><input checked="" id="showDurationField" type="checkbox"/> Dur</label><label><input checked="" id="showWordCountField" type="checkbox"/> Words</label><label><input checked="" id="showUtteranceCountField" type="checkbox"/> Utts</label><label><input checked="" id="showSpeakerField" type="checkbox"/> Speaker</label></div></div><div class="transcript-submenu-panel" data-transcript-panel="popout"><div class="controls-section-title"><span>Transcript pop-out</span></div><div class="controls-subgrid transcript-popout-controls"><button class="soft" id="popTranscript" title="Transcript pop-out: open editable synced transcript window with timing, speaker styling, code markers, group hairlines, row reordering, and shortcuts">Text Pop</button><button class="soft" id="bringTextFront" title="Bring transcript pop-out to front">Front</button><button class="soft" id="closeTextPop" title="Close transcript pop-out">Close</button></div><div class="transcript-popout-scale-row" title="Adjust only the transcript pop-out display scale. This does not change the main transcript font size."><span>Scale</span><button class="soft" id="popoutTextScaleDown" title="Make transcript pop-out text smaller">Text −</button><button class="soft scale-readout" id="popoutTextScaleReset" title="Reset transcript pop-out scale to 100%">100%</button><button class="soft" id="popoutTextScaleUp" title="Make transcript pop-out text larger">Text +</button></div><label class="main-transcript-hide-option hidden" id="hideMainTranscriptOption" title="Available only while the transcript pop-out is open. Hide the complete main transcript workspace, including timing/start-stop fields, because those fields remain available in the pop-out."><input id="hideMainTranscriptWhenPopout" type="checkbox"/> Hide main transcript</label></div><div class="transcript-submenu-panel" data-transcript-panel="find"><div class="controls-section-title"><span>Find &amp; Replace</span></div><div class="transcript-find-replace" title="Find and replace literal text in either the Speaker column or Transcript column."><div class="transcript-find-targets"><label><input id="findTargetSpeaker" name="findReplaceTarget" type="radio" value="speaker"/> Speaker</label><label><input checked="" id="findTargetTranscript" name="findReplaceTarget" type="radio" value="transcript"/> Transcript</label></div><div class="transcript-find-inputs"><input id="findText" placeholder="Find text" title="Literal text to find in the selected column" type="text"/><input id="replaceText" placeholder="Replace with" title="Replacement text for the selected column" type="text"/></div><div class="transcript-find-buttons"><button class="soft" id="findNextText" title="Find the next matching row in the selected column">Find</button><button class="soft" id="replaceOneText" title="Replace the next/current match in the selected column">Replace</button><button class="soft" id="replaceAllText" title="Replace all matches in the selected column. This can be undone with Command/Ctrl-Z.">Replace all</button><button class="soft" id="sortStartRows" title="Sort transcript rows chronologically by Start time. Rows with blank Start times move to the bottom; same-time rows keep their current order.">sort-Start</button></div></div></div></div></div><div class="format-pane hidden" id="caPane"><div class="left-pane-title"><span class="left-pane-title-text">CA</span><button class="pane-help-btn" data-pane-help="ca" title="CA pane help">?</button></div><div class="controls-section-title"><span>Parent / child tiers</span></div><div class="ca-child-options" title="Child tiers: italicized Speaker rows and double-parentheses rows can become child tiers linked to the just-prior parent tier. Parent tier timecodes are copied to child tiers only when Force PT timecodes is checked."><label title="When on, italicized Speaker rows and transcript rows beginning with double parentheses can become child tiers under the just-prior parent tier."><input id="childSpeakerMode" type="checkbox"/> Child tiers</label><label title="When checked, copy and enforce parent-tier Start/Stop/Dur values on all child tiers under that parent tier, including double-parentheses child tiers. When unchecked, child tiers keep their own timecodes."><input id="forceParentTimecodes" type="checkbox"/> Force PT timecodes</label><label title="Remove numeric line numbers from child tiers. Parent tier numbering remains visible."><input id="removeChildTierNumbers" type="checkbox"/> Remove CT #</label><label title="Show lowercase ascending child-tier letters under each parent tier: a, b, c."><input id="addChildTierAbc" type="checkbox"/> add CT abc</label></div><div class="controls-section-title"><span>Transcript style</span></div><div class="format-grid ca-format-grid" title="Format selected text in the active Speaker or Transcript field"><button class="soft format-btn" id="caFmtBold" title="Bold selected Speaker/Transcript text"><b>B</b></button><button class="soft format-btn" id="caFmtItalic" title="Italicize selected Speaker/Transcript text"><i>I</i></button><button class="soft format-color-swatch" id="caFmtRed" title="Color selected Speaker/Transcript text red">Red</button><button class="soft format-color-swatch" id="caFmtBlue" title="Color selected Speaker/Transcript text blue">Blue</button><button class="soft format-color-swatch" id="caFmtGreen" title="Color selected Speaker/Transcript text green">Green</button><button class="soft format-color-swatch" id="caFmtGrey" title="Color selected Speaker/Transcript text medium grey">Grey</button><button class="soft format-color-swatch" id="caFmtBlack" title="Color selected Speaker/Transcript text black">Black</button><button class="soft format-btn" id="caFmtClear" title="Clear formatting from selected Speaker/Transcript text">Clear</button></div></div><div class="format-pane hidden cmt-pane" id="cmtPane"><div class="left-pane-title"><span class="left-pane-title-text">Comments</span><button class="pane-help-btn" data-pane-help="cmt" title="Comment pane help">?</button></div><div aria-hidden="true" class="cmt-pane-body"></div><div class="cmt-pane-bottom"><div class="controls-section-title"><span>Comment controls</span></div><div class="commentrow-controls">
 <button class="soft" id="addCommentRow" title="Insert a light-red Comment row at the current media time. Comment rows are excluded from Follow, Dur, LineDur, and line numbering.">Add comment</button>
 <button class="soft" id="toggleCommentRows" title="Hide/show Comment rows without deleting their Line Notes.">Hide</button>
 <button class="soft" id="generateCommentRows1" title="Generate Comment rows at 1-minute intervals.">Every 1m</button>
@@ -3002,7 +3015,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.180 — Standalone Web. Native .dote import, waveform calibration recovery/import, selected-waveform timing insertion, Point Undo, waveform selection preview, and transcript-line splitting are included in the current build.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.185 — Standalone Web. Child-tier rows, including double-parentheses child tiers, inherit parent Start/Stop/Duration only while Force PT timecodes is checked; otherwise their own timecodes are preserved.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3022,7 +3035,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.180 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.185 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3086,7 +3099,7 @@ input[type=reset],
 <li><strong>sort-Start:</strong> in Transcript → Find &amp; Replace, sorts rows by Start time; blank Start rows move to the bottom and same-time rows keep their order.</li>
 <li><strong>Speaker field:</strong> right-justified with 10 px right padding. Speaker italic/color styling is inherited visually by the associated transcript line.</li>
 <li><strong>Speaker color menu:</strong> Command/Ctrl-click Speaker text to open a six-color menu. This works in the main transcript and transcript pop-out.</li>
-<li><strong>Child mode:</strong> when <strong>Child tiers</strong> is checked, italicized Speaker rows are tagged as child tiers linked to the just-prior primary line and inherit that primary line’s Start/End/Duration.</li>
+<li><strong>Child mode:</strong> when <strong>Child tiers</strong> is checked, italicized Speaker rows and double-parentheses transcript rows can be tagged as child tiers linked to the just-prior parent line. They keep their own Start/End/Duration unless <strong>Force PT timecodes</strong> is checked.</li>
 <li><strong>Transcript text:</strong> remains plain transcript content. Speaker styling affects visual display and child tagging; it does not convert transcript text itself into stored rich text.</li>
 </ul>
 <h3>Transcript pop-out</h3>
@@ -3102,6 +3115,7 @@ input[type=reset],
 <h3>Code styles and transcript markers</h3>
 <ul>
 <li><strong>Code edit mode:</strong> Code buttons and section headers can receive colors and shapes. Codes inherit a section color/shape until a new section or an individual code override.</li>
+<li><strong>Filter:</strong> click Filter in the Code pane, then use the existing Code buttons to select which coded transcript units are shown. Parent/child tier units stay together. Optional ±1 shows one preceding and one following parent-tier unit. Any/All controls whether one or every selected Code must be present. Filter mode is view-only and does not alter transcript data.</li>
 <li><strong>Selected Code buttons:</strong> selected buttons use a border highlight in the code’s assigned/inherited color.</li>
 <li><strong>Transcript markers:</strong> styled Code shapes appear on the right side of transcript rows. Click a Code icon to show its name; Command/Ctrl-click changes or deletes that Code; Command/Ctrl-Option/Alt-click opens the Code palette to add another Code. The first selected code is farthest right; later selected codes extend leftward.</li>
 <li><strong>Legacy preservation:</strong> existing coded rows with no assigned style still show a fallback red-circle marker so old project coding remains visible.</li>
@@ -3235,10 +3249,18 @@ input[type=reset],
 <div class="right-pane-help-row"><button class="pane-help-btn" data-pane-help="talkaction" title="Code pane help">?</button></div>
 <div class="talk-code-toolbar">
 <button aria-label="Toggle Code code edit mode" class="talk-code-edit-toggle" id="talkCodeEditToggle" title="Toggle Code code edit mode">✎</button>
+<button aria-label="Toggle transcript filtering by Code" class="talk-code-filter-toggle" id="talkCodeFilterToggle" title="Filter transcript by selected Code buttons">Filter</button>
 <button class="talk-code-tool" id="talkCodeAddBefore">+before</button>
 <button class="talk-code-tool" id="talkCodeAddAfter">+after</button>
 <button class="talk-code-tool" id="talkCodeAddSection">+section</button>
 <button class="talk-code-tool" id="talkCodeDelete">delete</button>
+</div>
+<div class="talk-code-filter-panel" id="talkCodeFilterPanel" aria-hidden="true">
+<label title="Show rows matching at least one selected Code"><input id="talkCodeFilterAny" name="talkCodeFilterMatch" type="radio" value="any" checked> Any</label>
+<label title="Show rows matching every selected Code"><input id="talkCodeFilterAll" name="talkCodeFilterMatch" type="radio" value="all"> All</label>
+<label title="Also show one parent-tier transcript unit immediately before and after each matching unit"><input id="talkCodeFilterContext" type="checkbox"> ±1</label>
+<button class="soft" id="talkCodeFilterClear" type="button" title="Clear selected filter Codes and show the full transcript">Clear</button>
+<span class="talk-code-filter-summary" id="talkCodeFilterSummary"></span>
 </div>
 <div class="talk-code-table" id="talkCodeTable"></div>
 <textarea aria-hidden="true" class="side" id="talk" placeholder="Code" tabindex="-1"></textarea>
@@ -3543,6 +3565,11 @@ input[type=reset],
 /* Gravar V0.6.169: normalizes default imported speaker labels from Speaker n to Spkr n across DOTE, TSV, and ELAN imports. */
 /* Gravar V0.6.179: accepts native .dote files in the DOTE file chooser; MacWhisper .dote files are JSON text but were previously hidden by the .json-only accept filter. */
 /* Gravar V0.6.180: centralizes current-version description in XBuild and propagates it to title, About, Help, project metadata, and V-Clip metadata so release identity stays synchronized. */
+/* Gravar V0.6.181: makes each Code-pane section header independently collapsible; collapsed state persists in project and reusable Code-set JSON. */
+/* Gravar V0.6.182: adds a compact Code-pane transcript filter. Filter mode reuses existing Code buttons to show matching parent/child tier units, with optional one-unit preceding/following context and main/pop-out parity. */
+/* Gravar V0.6.183: fixes startup failure in v0.6.182 by moving Code-filter methods from XSymbols to XTalkActionPalette, matching the object used by Code-pane initialization and event handlers. */
+/* Gravar V0.6.184: gates transcript-parentheses parent/child tagging behind CA Child tiers mode so parenthesized waveform-created rows retain their own timecodes when Child tiers is off. */
+/* Gravar V0.6.185: parent-tier timing is copied to child tiers only while Force PT timecodes is explicitly checked, including double-parentheses child tiers. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3552,9 +3579,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.180',
+  version: '0.6.185',
   label: 'Standalone Web',
-  description: 'Native .dote import; waveform calibration recovery/import; selected-waveform onset/offset insertion; Point Undo; waveform selection preview; Option–Return transcript-line split.',
+  description: 'Child-tier timing inheritance now occurs only when Force PT timecodes is checked, including double-parentheses child tiers; when Force PT is off, child tiers retain their own Start/Stop/Duration. Parentheses tier tagging still requires CA Child tiers mode; includes Code-based transcript filtering, collapsible Code sections, native .dote import, waveform calibration recovery, waveform interval insertion, Point Undo, preview, and transcript-line split.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -3751,6 +3778,10 @@ const XState = {
   ],
   activeTalkActionCodeId: 'talk-question',
   talkActionEditMode: false,
+  talkCodeFilterMode: false,
+  talkCodeFilterLabels: [],
+  talkCodeFilterMatch: 'any',
+  talkCodeFilterContext: false,
   logHtml: '',
   activeTranscriptCursor: null,
   popoutTranscriptCursor: null,
@@ -3881,6 +3912,13 @@ const XDom = {
     this.cmtPane=this.q('cmtPane');
     this.caPane=this.q('caPane');
     this.talkCodeEditToggle=this.q('talkCodeEditToggle');
+    this.talkCodeFilterToggle=this.q('talkCodeFilterToggle');
+    this.talkCodeFilterPanel=this.q('talkCodeFilterPanel');
+    this.talkCodeFilterAny=this.q('talkCodeFilterAny');
+    this.talkCodeFilterAll=this.q('talkCodeFilterAll');
+    this.talkCodeFilterContext=this.q('talkCodeFilterContext');
+    this.talkCodeFilterClear=this.q('talkCodeFilterClear');
+    this.talkCodeFilterSummary=this.q('talkCodeFilterSummary');
     this.talkCodeAddBefore=this.q('talkCodeAddBefore');
     this.talkCodeAddAfter=this.q('talkCodeAddAfter');
     this.talkCodeAddSection=this.q('talkCodeAddSection');
@@ -6287,7 +6325,7 @@ const XTranscript = {
   },
   tagChildLine(row,parent){
     if(!row || !parent) return false;
-    const timingChanged=this.inheritParentTiming(row,parent);
+    const timingChanged=XState.forceParentTimecodes ? this.inheritParentTiming(row,parent) : false;
     row.lineRole='child';
     row.parentRowId=parent.id;
     row.childLine={
@@ -6524,6 +6562,50 @@ const XTranscript = {
     }
     this.updateStripeControls();
   },
+  filterUnitParent(row){
+    if(!row || this.isCommentRow(row)) return null;
+    if(this.isChildTierRow && this.isChildTierRow(row)) return (this.parentForChildTier && this.parentForChildTier(row)) || row;
+    return row;
+  },
+
+  transcriptFilterResult(){
+    const labels=Array.isArray(XState.talkCodeFilterLabels) ? XState.talkCodeFilterLabels.map(v=>String(v||'').trim()).filter(Boolean) : [];
+    if(!XState.talkCodeFilterMode || !labels.length) return {visible:null,matches:0,displayed:XState.rows.filter(r=>!this.isCommentRow(r)).length};
+    const units=[];
+    const byParent=new Map();
+    (XState.rows||[]).forEach(row=>{
+      if(!row || this.isCommentRow(row)) return;
+      const parent=this.filterUnitParent(row);
+      if(!parent) return;
+      if(!byParent.has(parent.id)){ const unit={parent,rows:[]}; byParent.set(parent.id,unit); units.push(unit); }
+      byParent.get(parent.id).rows.push(row);
+    });
+    const selected=new Set(labels);
+    const matchAll=XState.talkCodeFilterMatch==='all';
+    const matching=new Set();
+    units.forEach((unit,idx)=>{
+      const codes=new Set();
+      unit.rows.forEach(row=>{
+        const vals=(typeof XTalkActionPalette!=='undefined' && typeof XTalkActionPalette.splitCodes==='function') ? XTalkActionPalette.splitCodes(row.talkAction||'') : String(row.talkAction||'').split(';').map(v=>v.trim()).filter(Boolean);
+        vals.forEach(code=>codes.add(code));
+      });
+      const ok=matchAll ? labels.every(label=>codes.has(label)) : labels.some(label=>codes.has(label));
+      if(ok) matching.add(idx);
+    });
+    const included=new Set(matching);
+    if(XState.talkCodeFilterContext){
+      matching.forEach(idx=>{ if(idx>0) included.add(idx-1); if(idx+1<units.length) included.add(idx+1); });
+    }
+    const visible=new Set();
+    included.forEach(idx=>units[idx].rows.forEach(row=>visible.add(row.id)));
+    return {visible,matches:matching.size,displayed:visible.size};
+  },
+
+  filterStats(){
+    const result=this.transcriptFilterResult();
+    return {matches:result.matches||0,displayed:result.displayed||0};
+  },
+
   render(){
     this.ensureRow();
     this.updateStripeControls();
@@ -6533,12 +6615,17 @@ const XTranscript = {
     XDom.timeRows.innerHTML='';
     XDom.transcriptRows.innerHTML='';
 
-    const lineNumberState={n:0,child:{}};
+    const filterResult=this.transcriptFilterResult();
+    const visibleFilter=filterResult.visible;
+    const lineLabels=new Map();
+    const numberingState={n:0,child:{}};
+    XState.rows.forEach(row=>{ if(!this.isCommentRow(row) && this.lineNumberLabelForRow) lineLabels.set(row.id,this.lineNumberLabelForRow(row,numberingState)); });
     XState.rows.forEach((row,index)=>{
       const isComment=this.isCommentRow(row);
-      if(isComment && XState.showCommentRows===false) return;
-      if(!isComment && this.shouldHideChildTierRow && this.shouldHideChildTierRow(row)) return;
-      const lineNumberLabel=(!isComment && this.lineNumberLabelForRow) ? this.lineNumberLabelForRow(row,lineNumberState) : '';
+      if(isComment && (XState.showCommentRows===false || visibleFilter)) return;
+      if(!isComment && visibleFilter && !visibleFilter.has(row.id)) return;
+      if(!isComment && !visibleFilter && this.shouldHideChildTierRow && this.shouldHideChildTierRow(row)) return;
+      const lineNumberLabel=(!isComment && this.lineNumberLabelForRow) ? (lineLabels.get(row.id)||'') : '';
       const timeRow=document.createElement('div');
       timeRow.className='time-row'+(isComment ? ' comment-row' : '')+(!isComment && this.isChildTierRow && this.isChildTierRow(row) ? ' child-tier-row' : '');
       timeRow.title='Transcript timing row. Click to select; Shift-click selects a contiguous range.';
@@ -6841,6 +6928,7 @@ const XTranscript = {
     this.markRows();
     this.updateCommentRowsButton();
     this.updateCommandTimeFieldGrounding();
+    if(typeof XTalkActionPalette!=='undefined' && typeof XTalkActionPalette.updateModeUI==='function') XTalkActionPalette.updateModeUI();
     requestAnimationFrame(()=>{this.resizeAll(); this.updateCommandTimeFieldGrounding();});
     if(typeof XTranscriptPopout !== 'undefined') XTranscriptPopout.syncSoon();
   }
@@ -6952,7 +7040,9 @@ const XTranscript = {
     if(!row || !parent || !this.hasSpeakerText(parent)) return false;
     const wasChild=!!(this.isChildTierRow(row) && row.parentRowId===parent.id);
     let timingChanged=false;
-    if(!wasChild || XState.forceParentTimecodes){
+    // v0.6.185: tagging a row as a child tier must not overwrite its own
+    // waveform-selected timing. Parent timing is copied only when Force PT is on.
+    if(XState.forceParentTimecodes){
       timingChanged=this.inheritParentTiming(row,parent);
     }
     row.lineRole='child';
@@ -7274,12 +7364,16 @@ const XTranscript = {
 
 })();
 
-/* V0.6.125: transcript-parentheses parent/child tier tagging.
-   Transcript text beginning with "((" becomes a child tier under the nearest
-   preceding parent tier. Transcript text beginning with a single "(" becomes a
-   parent tier, even when the Speaker field is blank. Speaker italics continue
-   to work when Child tiers is enabled, but the transcript parentheses markers
-   take precedence. */
+/* V0.6.185 diagnostic: Force PT is the sole authority for parent-to-child timing inheritance.
+   Child-tier classification and timing inheritance are separate operations. A row may be
+   classified as a child tier by italic Speaker or double-parentheses without losing its
+   own Start/Stop/Duration. Only a checked Force PT control permits timing replacement. */
+
+/* V0.6.184: transcript-parentheses parent/child tier tagging is gated by CA Child tiers mode.
+   When Child tiers is ON, transcript text beginning with "((" becomes a child tier
+   under the nearest preceding parent tier and text beginning with a single "("
+   becomes a parent tier. When Child tiers is OFF, parentheses are ordinary transcript
+   text and every waveform-created row keeps its own Start/Stop/Duration. */
 (function(){
   if(typeof XTranscript === 'undefined' || typeof XState === 'undefined') return;
 
@@ -7289,6 +7383,9 @@ const XTranscript = {
     return (div.textContent||div.innerText||'').replace(/\u00a0/g,' ');
   }
   function markerForTranscript(row){
+    // Parentheses are tier markers only when CA → Child tiers is explicitly enabled.
+    // With Child tiers off they remain ordinary transcript text and must not alter timing.
+    if(!XState.childSpeakerMode) return '';
     const t=plain(row && row.transcript || '').trimStart();
     if(t.indexOf('((')===0) return 'child';
     if(t.indexOf('(')===0) return 'parent';
@@ -7330,10 +7427,16 @@ const XTranscript = {
     if(previousTagChildLine){
       changed=!!previousTagChildLine(row,parent);
     }else if(row && parent){
-      const nextStart=parent.start||'';
-      const nextEnd=parent.end||'';
-      if(row.start!==nextStart){ row.start=nextStart; changed=true; }
-      if(row.end!==nextEnd){ row.end=nextEnd; changed=true; }
+      if(XState.forceParentTimecodes){
+        const nextStart=parent.start||'';
+        const nextEnd=parent.end||'';
+        if(row.start!==nextStart){ row.start=nextStart; changed=true; }
+        if(row.end!==nextEnd){ row.end=nextEnd; changed=true; }
+        const startSeconds=XUtils.parseTime(row.start);
+        const endSeconds=XUtils.parseTime(row.end);
+        const nextDuration=(Number.isFinite(startSeconds) && Number.isFinite(endSeconds) && endSeconds>=startSeconds) ? XUtils.formatDurationValue(endSeconds-startSeconds) : '';
+        if(row.duration!==nextDuration){ row.duration=nextDuration; changed=true; }
+      }
       row.lineRole='child';
       row.parentRowId=parent.id;
       row.childTier={enabled:true,parentRowId:parent.id};
@@ -7970,6 +8073,43 @@ const XSymbols = {
 ========================= */
 const XTalkActionPalette = {
   delimiter: ';',
+
+  filterLabels(){
+    return Array.isArray(XState.talkCodeFilterLabels) ? XState.talkCodeFilterLabels.map(v=>String(v||'').trim()).filter(Boolean) : [];
+  },
+
+  toggleFilterCode(code){
+    if(this.isSection(code)) return;
+    const label=this.codeText(code);
+    if(!label) return;
+    const labels=new Set(this.filterLabels());
+    if(labels.has(label)) labels.delete(label); else labels.add(label);
+    XState.talkCodeFilterLabels=Array.from(labels);
+    this.render();
+    XTranscript.render();
+    if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true});
+    XFiles.autosave();
+  },
+
+  toggleFilterMode(){
+    XState.talkCodeFilterMode=!XState.talkCodeFilterMode;
+    if(XState.talkCodeFilterMode && XState.talkActionEditMode) XState.talkActionEditMode=false;
+    this.render();
+    XTranscript.render();
+    if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true});
+    XFiles.autosave();
+    XStatus.set(XState.talkCodeFilterMode ? 'Code transcript filter on. Click Code buttons to select filter Codes.' : 'Code transcript filter off. Full transcript shown.');
+  },
+
+  clearFilter(){
+    XState.talkCodeFilterLabels=[];
+    XState.talkCodeFilterMode=false;
+    this.render();
+    XTranscript.render();
+    if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true});
+    XFiles.autosave();
+    XStatus.set('Code transcript filter cleared. Full transcript shown.');
+  },
   styleColors:[
     {id:'', label:'inherit', value:''},
     {id:'green', label:'green', value:'#16a34a'},
@@ -8167,6 +8307,23 @@ const XTalkActionPalette = {
       XDom.talkCodeEditToggle.title = XState.talkActionEditMode ? 'Code code edit mode on' : 'Code code edit mode off';
       XDom.talkCodeEditToggle.setAttribute('aria-pressed', XState.talkActionEditMode ? 'true' : 'false');
     }
+    if(XDom.talkCodeFilterToggle){
+      XDom.talkCodeFilterToggle.classList.toggle('active', !!XState.talkCodeFilterMode);
+      XDom.talkCodeFilterToggle.setAttribute('aria-pressed', XState.talkCodeFilterMode ? 'true' : 'false');
+      XDom.talkCodeFilterToggle.title=XState.talkCodeFilterMode ? 'Turn off Code transcript filtering' : 'Filter transcript by selected Code buttons';
+    }
+    if(XDom.talkCodeFilterPanel){
+      XDom.talkCodeFilterPanel.classList.toggle('open', !!XState.talkCodeFilterMode);
+      XDom.talkCodeFilterPanel.setAttribute('aria-hidden', XState.talkCodeFilterMode ? 'false' : 'true');
+    }
+    if(XDom.talkCodeFilterAny) XDom.talkCodeFilterAny.checked=(XState.talkCodeFilterMatch!=='all');
+    if(XDom.talkCodeFilterAll) XDom.talkCodeFilterAll.checked=(XState.talkCodeFilterMatch==='all');
+    if(XDom.talkCodeFilterContext) XDom.talkCodeFilterContext.checked=!!XState.talkCodeFilterContext;
+    if(XDom.talkCodeFilterSummary){
+      const labels=this.filterLabels();
+      const stats=(typeof XTranscript!=='undefined' && typeof XTranscript.filterStats==='function') ? XTranscript.filterStats() : null;
+      XDom.talkCodeFilterSummary.textContent=!labels.length ? 'Select Code buttons' : (stats ? (stats.matches+' matches • '+stats.displayed+' rows') : (labels.length+' selected'));
+    }
     [XDom.talkCodeAddBefore, XDom.talkCodeAddAfter, XDom.talkCodeAddSection, XDom.talkCodeDelete].forEach(button=>{
       if(button) button.disabled=!XState.talkActionEditMode;
     });
@@ -8174,6 +8331,7 @@ const XTalkActionPalette = {
 
   toggleEditMode(){
     XState.talkActionEditMode=!XState.talkActionEditMode;
+    if(XState.talkActionEditMode) XState.talkCodeFilterMode=false;
     this.render();
     XStatus.set(XState.talkActionEditMode ? 'Code code edit mode on. Add, delete, edit, drag, or add section dividers.' : 'Code code edit mode off. Click codes to toggle them for the active or selected transcript rows.');
   },
@@ -8309,7 +8467,7 @@ const XTalkActionPalette = {
 
   addSection(){
     if(!XState.talkActionEditMode) return;
-    const section={id:XUtils.id(), type:'section', title:'Section'};
+    const section={id:XUtils.id(), type:'section', title:'Section', collapsed:false};
     let index=this.selectedIndex();
     if(index<0) index=XState.talkActionCodes.length-1;
     XState.talkActionCodes.splice(index+1,0,section);
@@ -8392,11 +8550,21 @@ const XTalkActionPalette = {
 
   makeSection(item){
     const section=document.createElement('div');
-    section.className='talk-code-section';
+    section.className='talk-code-section'+(item.collapsed ? ' collapsed' : '');
     section.dataset.talkCodeId=item.id;
+    section.setAttribute('aria-expanded', item.collapsed ? 'false' : 'true');
+    section.title=XState.talkActionEditMode
+      ? 'Edit mode: select or edit this Code section header'
+      : (item.collapsed ? 'Click to show the Code buttons in this section' : 'Click to hide the Code buttons in this section');
     section.onclick=()=>{
       XState.activeTalkActionCodeId=item.id;
-      this.markSelected();
+      if(XState.talkActionEditMode){
+        this.markSelected();
+        return;
+      }
+      item.collapsed=!item.collapsed;
+      this.render();
+      XFiles.autosave();
     };
     this.attachDragHandlers(section,item);
 
@@ -8420,6 +8588,11 @@ const XTalkActionPalette = {
     }else{
       const label=document.createElement('div');
       label.className='talk-code-section-label';
+      const toggle=document.createElement('span');
+      toggle.className='talk-code-section-toggle';
+      toggle.textContent=item.collapsed ? '▶' : '▼';
+      toggle.setAttribute('aria-hidden','true');
+      label.append(toggle);
       const marker=this.makeStyleMarker({color:item.styleColor||'', shape:item.styleShape||''}, 'Section style');
       if(marker) label.append(marker);
       label.append(document.createTextNode(this.sectionText(item)||'Section'));
@@ -8432,11 +8605,17 @@ const XTalkActionPalette = {
     if(!XDom.talkCodeTable) return;
     XDom.talkCodeTable.innerHTML='';
 
+    let sectionCollapsed=false;
     XState.talkActionCodes.forEach(item=>{
       if(this.isSection(item)){
+        sectionCollapsed=!!item.collapsed;
         XDom.talkCodeTable.append(this.makeSection(item));
         return;
       }
+
+      // A section controls every Code button after it until the next section.
+      // Edit mode always reveals all buttons so the palette remains editable.
+      if(sectionCollapsed && !XState.talkActionEditMode) return;
 
       const label=this.codeText(item) || 'code';
 
@@ -8469,9 +8648,10 @@ const XTalkActionPalette = {
         const button=document.createElement('button');
         button.type='button';
         button.className='talk-code-button';
-        button.title = XState.talkActionEditMode ? 'Edit mode: edit or drag this Code code' : 'Click to toggle this Code code for the selected transcript row(s)';
+        button.title = XState.talkCodeFilterMode ? 'Filter mode: click to include/exclude this Code from the transcript filter' : (XState.talkActionEditMode ? 'Edit mode: edit or drag this Code code' : 'Click to toggle this Code code for the selected transcript row(s)');
         button.dataset.talkCodeId=item.id;
         button.dataset.label=label;
+        button.classList.toggle('filter-selected', XState.talkCodeFilterMode && this.filterLabels().includes(label));
         const style=this.effectiveStyleMap().get(label);
         button.style.setProperty('--code-selected-border', this.colorValue(style && style.color) || this.colorValue('red') || '#dc2626');
         const marker=this.makeStyleMarker(style, label+' style marker');
@@ -8479,7 +8659,8 @@ const XTalkActionPalette = {
         button.append(document.createTextNode(label));
         button.onclick=()=>{
           XState.activeTalkActionCodeId=item.id;
-          this.toggleCode(item);
+          if(XState.talkCodeFilterMode) this.toggleFilterCode(item);
+          else this.toggleCode(item);
         };
         XDom.talkCodeTable.append(button);
       }
@@ -8495,7 +8676,7 @@ const XTalkActionPalette = {
       if(item && item.styleColor) style.styleColor=String(item.styleColor);
       if(item && item.styleShape) style.styleShape=String(item.styleShape);
       if(this.isSection(item)){
-        return Object.assign({id:item.id || XUtils.id(), type:'section', title:String(item.title||'Section')}, style);
+        return Object.assign({id:item.id || XUtils.id(), type:'section', title:String(item.title||'Section'), collapsed:!!item.collapsed}, style);
       }
       return Object.assign({id:item.id || XUtils.id(), label:String(item.label||'').replace(/;/g,'')}, style);
     }).filter(item=>item.type==='section' || item.label);
@@ -8535,7 +8716,7 @@ const XTalkActionPalette = {
       if(item && item.styleColor) style.styleColor=String(item.styleColor);
       if(item && item.styleShape) style.styleShape=String(item.styleShape);
       if(item && item.type === 'section'){
-        return Object.assign({id:item.id ? String(item.id) : XUtils.id(), type:'section', title:String(item.title || item.label || 'Section')}, style);
+        return Object.assign({id:item.id ? String(item.id) : XUtils.id(), type:'section', title:String(item.title || item.label || 'Section'), collapsed:!!item.collapsed}, style);
       }
       return Object.assign({
         id:item && item.id ? String(item.id) : XUtils.id(),
@@ -8641,6 +8822,11 @@ const XTalkActionPalette = {
   bind(){
     this.render();
     if(XDom.talkCodeEditToggle) XDom.talkCodeEditToggle.onclick=()=>this.toggleEditMode();
+    if(XDom.talkCodeFilterToggle) XDom.talkCodeFilterToggle.onclick=()=>this.toggleFilterMode();
+    if(XDom.talkCodeFilterAny) XDom.talkCodeFilterAny.onchange=()=>{ XState.talkCodeFilterMatch='any'; XTranscript.render(); this.render(); XFiles.autosave(); if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true}); };
+    if(XDom.talkCodeFilterAll) XDom.talkCodeFilterAll.onchange=()=>{ XState.talkCodeFilterMatch='all'; XTranscript.render(); this.render(); XFiles.autosave(); if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true}); };
+    if(XDom.talkCodeFilterContext) XDom.talkCodeFilterContext.onchange=e=>{ XState.talkCodeFilterContext=!!e.target.checked; XTranscript.render(); this.render(); XFiles.autosave(); if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true}); };
+    if(XDom.talkCodeFilterClear) XDom.talkCodeFilterClear.onclick=()=>this.clearFilter();
     if(XDom.talkCodeAddBefore) XDom.talkCodeAddBefore.onclick=()=>this.addCode('before');
     if(XDom.talkCodeAddAfter) XDom.talkCodeAddAfter.onclick=()=>this.addCode('after');
     if(XDom.talkCodeAddSection) XDom.talkCodeAddSection.onclick=()=>this.addSection();
@@ -13254,10 +13440,10 @@ const XPaneHelp = {
       files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
-      ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','Rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier. Rows whose Transcript text begins with a single ( are parent tiers. When checked, italic Speaker rows can also be child tiers.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values. When unchecked, parent timecodes are inserted only when a child tier is first created.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
-      transcript: {title:'Transcript pane help', preamble:'The Transcript pane contains rich-text formatting, transcript display controls, transcript pop-out controls, and find/replace.', items:[['B / I / color buttons','Apply bold, italic, or selected color to the active rich-text field. Speaker-field italic/color styling is also inherited by the associated transcript line. Command/Ctrl-\ opens an inline Line Note popdown for the active transcript row; Command/Ctrl-Option/Alt-\ opens the Project Note popdown; Esc closes either popdown and writes changes back to the matching note panel.'],['Child tiers','Rows whose Transcript text begins with (( are tagged as child tiers linked to the nearest prior parent tier. Rows whose Transcript text begins with a single ( are parent tiers. Italic Speaker rows can also be child tiers when Child tiers is checked.'],['Clear','Removes rich-text formatting from the selected text in the active field.'],['Find / Replace','Choose Speaker or Transcript, enter literal Find text and optional replacement text, then use Find, Replace, or Replace all. Replace all is undoable with Command/Ctrl-Z.'],['Start/End shortcuts','Command-click / Ctrl-click a Start or End field seeks to that field time; Command-Option-click / Ctrl-Alt-click inserts the current time. Command-[ / Ctrl-[ sets Start; Command-] / Ctrl-] sets End for the active row.'],['Playback shortcuts','Command-click / Ctrl-click in a transcript text row plays that row or the selected row range once. Command-Option-click / Ctrl-Alt-click repeats that row or the selected row range until Escape or Shift-Space.'],['Follow coordination','When Follow is on, the active row and Code buttons coordinate with the current followed transcript row.']]},
+      ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','When Child tiers is checked, rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier, rows beginning with a single ( are parent tiers, and italic Speaker rows can also be child tiers. When Child tiers is off, parentheses are ordinary transcript text and rows retain their own timecodes.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values, including child tiers marked with double parentheses. When unchecked, child tiers retain their own Start/Stop/Dur values; merely becoming a child tier does not replace their timing.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
+      transcript: {title:'Transcript pane help', preamble:'The Transcript pane contains rich-text formatting, transcript display controls, transcript pop-out controls, and find/replace.', items:[['B / I / color buttons','Apply bold, italic, or selected color to the active rich-text field. Speaker-field italic/color styling is also inherited by the associated transcript line. Command/Ctrl-\ opens an inline Line Note popdown for the active transcript row; Command/Ctrl-Option/Alt-\ opens the Project Note popdown; Esc closes either popdown and writes changes back to the matching note panel.'],['Child tiers','Parentheses-based tier tagging applies only when Child tiers is checked: (( begins a child tier, a single ( begins a parent tier, and italic Speaker rows can also be child tiers. When Child tiers is off, parenthesized transcript text is treated as an ordinary full transcript line with its own timecodes. Child tiers retain their own Start/Stop/Duration unless Force PT timecodes is checked; Force PT applies equally to italic-Speaker and double-parentheses child tiers.'],['Clear','Removes rich-text formatting from the selected text in the active field.'],['Find / Replace','Choose Speaker or Transcript, enter literal Find text and optional replacement text, then use Find, Replace, or Replace all. Replace all is undoable with Command/Ctrl-Z.'],['Start/End shortcuts','Command-click / Ctrl-click a Start or End field seeks to that field time; Command-Option-click / Ctrl-Alt-click inserts the current time. Command-[ / Ctrl-[ sets Start; Command-] / Ctrl-] sets End for the active row.'],['Playback shortcuts','Command-click / Ctrl-click in a transcript text row plays that row or the selected row range once. Command-Option-click / Ctrl-Alt-click repeats that row or the selected row range until Escape or Shift-Space.'],['Follow coordination','When Follow is on, the active row and Code buttons coordinate with the current followed transcript row.']]},
       workspace: {title:'Persistent workspace controls help', preamble:'The persistent workspace controls remain visible below the left pane regardless of which pane is open. They support timing, line management, Follow, frame stepping, playback, and rapid movement through the video.', items:[['Time display','Shows current time and total duration. Click the display to copy the current time.'],['Dur / LineDur','Dur inserts pause-duration rows between selected contiguous rows. LineDur computes row duration from End minus Start.'],['Follow','Highlights the current row during playback, keeps the primary followed row visible, and coordinates Code state with the followed line.'],['+line / +above / +below / del / Merge','Add, delete, or merge transcript rows. Shift-click rows to select a range before Merge or Dur.'],['[ and ]','Set Start and End from the current video time. Shortcuts: Command-[ / Ctrl-[ and Command-] / Ctrl-].'],['Transport row','Use −1s, frame back, Play, frame forward, and +1s for movement and playback. Command/Ctrl-Left/Right scrubs by 0.10 sec; Command-Shift/Ctrl-Shift-Left/Right jumps by 1.0 sec. Shift-Space toggles play/pause.'],['Playback','Command/Ctrl-click the Play button toggles play/pause; Command/Ctrl-Option/Alt-click starts playback from the focused row Start time; double-click Play resets playback speed to 100%.']], sections:[{title:'Transcript row fields', items:[['Start','The onset time for the row. The visible field rounds to tenths for readability, while internal/exported timing preserves millisecond precision. Command/Ctrl-click a Start field to seek the video to that Start time. Command-Option/Ctrl-Alt-click inserts the current video time into Start. Command-[ / Ctrl-[ also sets Start for the active row.'],['End / Stop','The offset time for the row. Command/Ctrl-click an End field to seek the video to that End time. Command-Option/Ctrl-Alt-click inserts the current video time into End. Command-] / Ctrl-] also sets End for the active row.'],['Dur','A computed display of End minus Start. Command/Ctrl-click a Dur field to insert that row duration. Click LineDur to compute or refresh row durations for all rows; exported durations preserve millisecond precision.'],['Speaker','The speaker or participant ID for the row. Speaker fields are right-justified, capped to seven visible characters, and inset by one character; italic or color formatting on the Speaker field is inherited by that row’s transcript text. Command/Ctrl-click a Speaker field to open the Speaker color menu.'],['Transcript','The main utterance/action text for the row. It supports rich text, symbol insertion, row segment playback, and coding shortcuts. Command/Ctrl-click plays this row or the selected row range once. Command/Ctrl-Option/Alt-click repeats this row or the selected row range until Escape or Shift-Space.']]}]},
-      talkaction: {title:'Code pane help', preamble:'The Code pane assigns row-level analytic codes to the active transcript line. It is designed for rapid coding during playback, Follow, or segment-review workflows.', items:[['Code buttons','Click a code to toggle it on or off for the active transcript row. Selected codes are highlighted and stored in the row-level Code field. On transcript-row Code icons, plain click shows the Code name, Command/Ctrl-click replaces or deletes the clicked Code, and Command/Ctrl-Option/Alt-click adds another Code from the palette.'],['Follow coordination','When Follow is on, the active row can shift with the currently followed transcript line, so the highlighted Code buttons reflect that line.'],['Transcript playback','Command-click / Ctrl-click a row plays the active row or selected row range once. Command-Option-click / Ctrl-Alt-click repeats the active row or selected row range until Escape or Shift-Space.'],['Edit pencil','Toggle code-edit mode. In edit mode you can add codes before/after the selected code, add section dividers, delete items, and drag-reorder the palette.'],['Import/export codes','Use Files → Project to import or export reusable Code sets without changing existing row-level codes.']]},
+      talkaction: {title:'Code pane help', preamble:'The Code pane assigns row-level analytic codes to the active transcript line. It is designed for rapid coding during playback, Follow, or segment-review workflows.', items:[['Code buttons','Click a code to toggle it on or off for the active transcript row. Selected codes are highlighted and stored in the row-level Code field. On transcript-row Code icons, plain click shows the Code name, Command/Ctrl-click replaces or deletes the clicked Code, and Command/Ctrl-Option/Alt-click adds another Code from the palette.'],['Follow coordination','When Follow is on, the active row can shift with the currently followed transcript line, so the highlighted Code buttons reflect that line.'],['Transcript playback','Command-click / Ctrl-click a row plays the active row or selected row range once. Command-Option-click / Ctrl-Alt-click repeats the active row or selected row range until Escape or Shift-Space.'],['Section headers','Outside edit mode, click any section header to hide or show only the Code buttons belonging to that section. The triangle shows whether the section is expanded or collapsed, and each section remembers its state in the project.'],['Edit pencil','Toggle code-edit mode. Edit mode temporarily reveals all Code buttons so you can add codes before/after the selected code, add section dividers, delete items, and drag-reorder the palette.'],['Import/export codes','Use Files → Project to import or export reusable Code sets without changing existing row-level codes.']]},
       notes: {title:'Line Note pane help', preamble:'The Line Note pane stores line-level analytic comments for the active transcript row. Command/Ctrl-/ opens the active line note in a popdown below the transcript row. Line Notes can use rich-text formatting for project save and RTF export, but they are not exported in TSV or ELAN.', items:[['Editing comments','Click in the Line Note area and type. The comment belongs to the currently active transcript row.'],['Rich-text formatting','Use the Transcript pane formatting tools for bold, italic, color, and clear formatting while the Line Note field is active.'],['Autosave/project save','Line Note formatting is preserved in autosave and project JSON.'],['RTF export','Transcript RTF export preserves Line Note formatting. TSV and ELAN exports omit Line Notes.'],['Follow caution','If Follow is on during playback, the active row may change. Pause or use segment hold when writing detailed comments for a specific row.']]},
       log: {title:'Project Note pane help', preamble:'The Project Note pane is a project-level rich-text notebook. It is not tied to a transcript line and is not included in TSV or ELAN exports. Command/Ctrl-Option/Alt-\ opens the same Project Note in a larger red-highlighted popdown below the active transcript row; the prior Command/Ctrl-Shift-\ shortcut is also accepted. Esc closes it and writes the content back to this pane.', items:[['Editing the Project Note','Click in the Project Note area and type general session notes, project decisions, calibration observations, or analytic memos.'],['Fr-Clip links','Fr-Clip captures add a clickable project-file link to the Project Note. Clicking the link asks Gravar to open that saved frame from the current Project folder.'],['Rich-text formatting','Use the Transcript pane formatting tools for bold, italic, color, and clear formatting while the Project Note field is active.'],['Project save/autosave','The Project Note is preserved in Gravar project JSON and autosaves.'],['Export Project Note','Use Files → Export Project Note to save the Project Note as a separate RTF file.'],['Not row-linked','Changing the active transcript row does not change the Project Note content.']]},
       popouts: {title:'Pop pane help', preamble:'The Pop pane gathers detached-window controls in one place so Video and Transcript panes can stay focused on their own editing/display tools.', items:[['Video Pop','Toggle the muted synchronized video pop-out window on/off. When Load V2 is active, the pop-out can show videos side by side or stacked V1 above V2. The bottom strip shows current time, progress, and duration.'],['Text Pop / Front / Close','Open, bring forward, or close the editable transcript pop-out window.'],['Main-window placeholder','When the video pop-out is open, the main video area shows a lightweight placeholder to reduce rendering pressure.'],['Shortcuts and tooltips','The video pop-out supports Shift-Space, Command/Ctrl arrow scrubbing, Command/Ctrl-Shift arrow jumps, fullscreen with F, and hover tooltips on V1, V2, the stage, and the running-time strip.']],},
@@ -13845,6 +14031,10 @@ const XFiles = {
     XState.showWordCountField=true;
     XState.showUtteranceCountField=true;
     XState.showSpeakerField=true;
+    XState.talkCodeFilterMode=false;
+    XState.talkCodeFilterLabels=[];
+    XState.talkCodeFilterMatch='any';
+    XState.talkCodeFilterContext=false;
     XState.transcriptFontSizePx=15;
     XState.transcriptPopoutScale=1.0;
     XState.hideMainTranscriptWhenPopout=false;
@@ -13865,6 +14055,7 @@ const XFiles = {
     if(XDom.videoMsg) XDom.videoMsg.style.display='block';
 
     XTranscript.ensureRow();
+    if(typeof XTalkActionPalette!=='undefined') XTalkActionPalette.render();
     XTranscript.render();
     XSidePane.sync();
     XStatus.file('No video loaded');
@@ -13934,6 +14125,7 @@ const XFiles = {
       transcriptPopoutScale:(typeof XTranscriptPopout !== 'undefined' && typeof XTranscriptPopout.normalizedScale === 'function') ? XTranscriptPopout.normalizedScale() : (Number(XState.transcriptPopoutScale)||1),
       hideMainTranscriptWhenPopout:!!XState.hideMainTranscriptWhenPopout,
       showCommentRows:XState.showCommentRows!==false,
+      visibleFilterRowIds:(typeof XTranscript!=='undefined' && typeof XTranscript.transcriptFilterResult==='function' && XTranscript.transcriptFilterResult().visible) ? Array.from(XTranscript.transcriptFilterResult().visible) : null,
       dataFolderName:XState.dataDirName || '',
       projectFolderName:XState.dataDirName || '',
       workspaceFolderName:XState.workspaceDirName || '',
@@ -13956,6 +14148,10 @@ const XFiles = {
       talkActionCodes:(typeof XTalkActionPalette !== 'undefined' && typeof XTalkActionPalette.serializeItems === 'function') ? XTalkActionPalette.serializeItems(XState.talkActionCodes) : (XState.talkActionCodes||[]).map(code=>({id:code.id||XUtils.id(),label:String(code.label||'')})),
       activeTalkActionCodeId:XState.activeTalkActionCodeId,
       talkActionEditMode:XState.talkActionEditMode,
+      talkCodeFilterMode:!!XState.talkCodeFilterMode,
+      talkCodeFilterLabels:Array.isArray(XState.talkCodeFilterLabels) ? XState.talkCodeFilterLabels : [],
+      talkCodeFilterMatch:XState.talkCodeFilterMatch==='all' ? 'all' : 'any',
+      talkCodeFilterContext:!!XState.talkCodeFilterContext,
       groupDefinitions:(typeof XGroupPalette !== 'undefined' && typeof XGroupPalette.serializeItems === 'function') ? XGroupPalette.serializeItems(XState.groupDefinitions) : (XState.groupDefinitions||[]),
       activeGroupId:XState.activeGroupId,
       groupEditMode:XState.groupEditMode,
@@ -14556,6 +14752,10 @@ const XFiles = {
         if(typeof XTranscriptPopout !== 'undefined' && typeof XTranscriptPopout.updateMainTranscriptVisibility === 'function') XTranscriptPopout.updateMainTranscriptVisibility();
         if(typeof data.showCommentRows === 'boolean') XState.showCommentRows=data.showCommentRows;
         else XState.showCommentRows=true;
+        XState.talkCodeFilterMode=!!data.talkCodeFilterMode;
+        XState.talkCodeFilterLabels=Array.isArray(data.talkCodeFilterLabels) ? data.talkCodeFilterLabels.map(v=>String(v||'').trim()).filter(Boolean) : [];
+        XState.talkCodeFilterMatch=data.talkCodeFilterMatch==='all' ? 'all' : 'any';
+        XState.talkCodeFilterContext=!!data.talkCodeFilterContext;
         XTranscript.updateStripeControls();
         if(typeof XTranscript.updateChildControls === 'function') XTranscript.updateChildControls();
         XTranscript.updateTranscriptFontControls();
@@ -18769,7 +18969,7 @@ input[data-field="speaker"]{padding-top:calc(var(--transcript-pad-top,5px) + 4px
 </style>
 </head>
 <body>
-<div class="top" title="Transcript pop-out toolbar. Use these controls for Speaker style, child-tier behavior, chronological sort, and refresh from main Gravar."><strong title="Editable transcript pop-out synchronized with the main transcript">Gravar Transcript</strong><span class="popout-tools"><span class="speaker-style-mini" title="Style the focused Speaker field in this pop-out. Transcript text inherits the Speaker style in both windows."><span>Speaker</span><button id="speakerItalicPopout" title="Toggle italic for the focused Speaker field. Italic Speaker rows become child tiers; toggling italic turns Child tiers on if needed.">I</button><select id="speakerColorPopout" title="Set color for the focused Speaker field"><option value="">color</option><option value="green">green</option><option value="blue">blue</option><option value="red">red</option><option value="purple">purple</option><option value="orange">orange</option><option value="gray">gray</option></select></span><span class="child-tier-mini" title="Parent/child tier controls synced with the main Transcript pane."><label title="When checked, italicized Speaker rows become child tiers under the just-prior parent tier."><input id="childTierModePopout" type="checkbox"> Child tiers</label><label title="When checked, force parent-tier Start/Stop/Dur values onto all following child tiers under that parent tier."><input id="forceParentTimecodesPopout" type="checkbox"> Force PT</label></span><button id="sortStartPopout" title="Sort transcript rows chronologically by Start time">sort-Start</button><button id="refreshPopout" title="Refresh this pop-out from the main transcript state">Refresh</button><span title="Edits in this pop-out update the main transcript, and main-window edits sync back here.">Edits sync with main window</span></span></div>
+<div class="top" title="Transcript pop-out toolbar. Use these controls for Speaker style, child-tier behavior, chronological sort, and refresh from main Gravar."><strong title="Editable transcript pop-out synchronized with the main transcript">Gravar Transcript</strong><span class="popout-tools"><span class="speaker-style-mini" title="Style the focused Speaker field in this pop-out. Transcript text inherits the Speaker style in both windows."><span>Speaker</span><button id="speakerItalicPopout" title="Toggle italic for the focused Speaker field. Italic Speaker rows become child tiers; toggling italic turns Child tiers on if needed.">I</button><select id="speakerColorPopout" title="Set color for the focused Speaker field"><option value="">color</option><option value="green">green</option><option value="blue">blue</option><option value="red">red</option><option value="purple">purple</option><option value="orange">orange</option><option value="gray">gray</option></select></span><span class="child-tier-mini" title="Parent/child tier controls synced with the main Transcript pane."><label title="When checked, italicized Speaker rows and transcript rows beginning with double parentheses can become child tiers under the just-prior parent tier."><input id="childTierModePopout" type="checkbox"> Child tiers</label><label title="When checked, copy and enforce parent-tier Start/Stop/Dur values on all child tiers under that parent tier, including double-parentheses child tiers. When unchecked, child tiers keep their own timecodes."><input id="forceParentTimecodesPopout" type="checkbox"> Force PT</label></span><button id="sortStartPopout" title="Sort transcript rows chronologically by Start time">sort-Start</button><button id="refreshPopout" title="Refresh this pop-out from the main transcript state">Refresh</button><span title="Edits in this pop-out update the main transcript, and main-window edits sync back here.">Edits sync with main window</span></span></div>
 <div class="wrap" title="Transcript pop-out workspace. Timing fields are on the left; transcript text, group hairlines, code markers, and note markers are on the right."><div class="timing" id="timeRows" title="Timing fields. Command/Ctrl-click Start/End to seek; Command/Ctrl-Option/Alt-click Start/End to insert current time."></div><div class="transcripts" id="transcriptRows" title="Transcript rows. Command/Ctrl-click row text to play the row segment; drag line numbers to reorder; group hairlines and code markers show row annotations."></div></div>
 <script>
 let rows=[];
@@ -18777,6 +18977,7 @@ let activeRowId=null;
 let selectedRowIds=new Set();
 let speakingRowId=null;
 let showCommentRows=true;
+let visibleFilterRowIds=null;
 let syncScroll=false;
 let editingField=null;
 let isEditing=false;
@@ -19135,6 +19336,9 @@ function refreshPopoutTimingFields(rowId){
 }
 
 function transcriptTierMarker(row){
+  // Keep transcript pop-out semantics identical to the main transcript: parentheses
+  // identify parent/child tiers only while Child tiers mode is explicitly enabled.
+  if(!childSpeakerMode) return '';
   const t=plainText(row && row.transcript || '').trimStart();
   if(t.indexOf('((')===0) return 'child';
   if(t.indexOf('(')===0) return 'parent';
@@ -19152,7 +19356,8 @@ function retagChildRowsLocal(){
     if(shouldBeChild){
       const wasChild=!!(isChildTierRow(row) && row.parentRowId===previousParent.id);
       let changed=false;
-      if(!wasChild || forceParentTimecodes){
+      // Match main transcript semantics: only Force PT may overwrite a child tier's own timing.
+      if(forceParentTimecodes){
         const nextStart=previousParent.start||'';
         const nextEnd=previousParent.end||'';
         if(row.start!==nextStart){ row.start=nextStart; changed=true; }
@@ -19671,12 +19876,15 @@ function render(){
   updateSpeakerColumnWidth();
   timeRows.innerHTML='';
   transcriptRows.innerHTML='';
-  const lineNumberState={n:0,child:{}};
+  const lineLabels=new Map();
+  const numberingState={n:0,child:{}};
+  rows.forEach(row=>{ if(!isCommentRow(row)) lineLabels.set(row.id,lineNumberLabelForRow(row,numberingState)); });
   rows.forEach((row,index)=>{
     const isComment=isCommentRow(row);
-    if(isComment && showCommentRows===false) return;
-    if(!isComment && shouldHideChildTierRow(row)) return;
-    const lineNumberLabel=!isComment ? lineNumberLabelForRow(row,lineNumberState) : '';
+    if(isComment && (showCommentRows===false || visibleFilterRowIds instanceof Set)) return;
+    if(!isComment && visibleFilterRowIds instanceof Set && !visibleFilterRowIds.has(row.id)) return;
+    if(!isComment && !(visibleFilterRowIds instanceof Set) && shouldHideChildTierRow(row)) return;
+    const lineNumberLabel=!isComment ? (lineLabels.get(row.id)||'') : '';
     const t=document.createElement('div');
     t.className='time-row'+(isComment ? ' comment-row' : '')+(!isComment && isChildTierRow(row) ? ' child-tier-row' : '');
     t.title='Transcript timing row. Click to select; Shift-click selects a contiguous range. Drag the line number to reorder rows.';
@@ -19904,6 +20112,7 @@ window.addEventListener('message',event=>{
     speakingRowId=data.speakingRowId||null;
     followRowIds=new Set(Array.isArray(data.followRowIds) ? data.followRowIds : []);
     showCommentRows=data.showCommentRows!==false;
+    visibleFilterRowIds=Array.isArray(data.visibleFilterRowIds) ? new Set(data.visibleFilterRowIds) : null;
     showTranscriptStripes=data.showTranscriptStripes!==false;
     showTimeStripes=data.showTimeStripes!==false;
     showTranscriptUnderline=data.showTranscriptUnderline!==false;
@@ -27119,8 +27328,8 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.168';
-  const EXPECTED_LABEL='DOTE Import';
+  const EXPECTED_VERSION='0.6.185';
+  const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{
       if(typeof XBuild === 'undefined') return;

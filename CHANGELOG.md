@@ -1,5 +1,57 @@
 # Gravar Changelog
 
+## v0.6.185 — Force PT Timecodes Explicit Only
+
+- Deep diagnostic traced parent-timecode inheritance through the main child-tier tagging path, the v0.6.184 parentheses wrapper, and the transcript pop-out's independent retagging path.
+- Repaired the condition that previously copied parent Start/Stop/Duration when a row first became a child tier even while **Force PT timecodes** was unchecked.
+- **Force PT timecodes** is now the sole trigger for parent-to-child timing replacement.
+- The rule applies equally to italic-Speaker child tiers and child tiers identified by transcript text beginning with double parentheses `((`.
+- With Force PT unchecked, a child tier keeps its own Start, Stop, and Duration, including waveform-selected timecodes.
+- With Force PT checked, parent Start/Stop/Duration is copied and re-enforced through normal retagging.
+- Applied identical semantics to the main transcript and transcript pop-out.
+- Updated CA controls, tooltips, Help, release metadata, and current-version description to v0.6.185.
+
+## v0.6.184 — Child-Tier Mode Gating
+
+- Repaired automatic parent/child tier tagging for parenthesized transcript text when **CA → Child tiers** is turned off.
+- Diagnostic: the transcript-parentheses tier marker introduced in v0.6.125 classified `((...))` as a child tier independently of the Child tiers checkbox. Retagging then inherited the preceding parent row's timing and overwrote the waveform-selected Start/Stop values.
+- Parentheses-based tier interpretation is now gated by the **Child tiers** setting in both the main transcript and transcript pop-out.
+- With Child tiers off, transcript text beginning with single or double parentheses is ordinary transcript text and remains a full transcript row with its own Start, Stop, and Duration.
+- With Child tiers on, the existing CA behavior is preserved: `((` can identify a child tier, a single `(` can identify a parent tier, and italic Speaker rows can identify child tiers.
+- Updated CA/Transcript Help and all current-version metadata to v0.6.184.
+
+## v0.6.183 — Code Filter Initialization Repair
+
+- Repaired the startup failure `this.filterLabels is not a function` introduced in v0.6.182.
+- Diagnostic: the new transcript-filter methods were accidentally attached to `XSymbols`, while Code-pane initialization and event handlers call them on `XTalkActionPalette`.
+- Moved `filterLabels`, `toggleFilterCode`, `toggleFilterMode`, and `clearFilter` to `XTalkActionPalette`, which owns the Code-pane filter UI.
+- Removed the misplaced duplicate methods from `XSymbols`.
+- Preserved the v0.6.182 Code-filter behavior: Any/All matching, parent/child tier grouping, optional ±1 context, pop-out parity, and project persistence.
+- Updated current-version metadata to v0.6.183.
+
+## v0.6.182 — Code-Based Transcript Filter
+
+- Added a compact **Filter** button beside the Code edit toggle in the right-side Code pane.
+- The filter controls take no space while inactive.
+- While Filter mode is active, existing Code buttons select or deselect filter criteria instead of applying codes to transcript rows.
+- Matching is available as **Any** selected code or **All** selected codes.
+- Parent and child tiers are treated as one transcript unit: if either a parent or one of its child tiers matches, the full parent/child unit is shown.
+- Added optional **±1** context to include one preceding and one following parent-level transcript unit, including all of those units’ child tiers.
+- Overlapping match/context ranges merge automatically.
+- Original transcript line numbering is preserved in filtered views.
+- Filtered viewing is non-destructive and does not modify, delete, or reorder transcript rows.
+- Added main transcript and transcript pop-out filtering parity.
+- Saved filter state in project JSON.
+
+## v0.6.181 — Collapsible Code Sections
+
+- Made every Code-pane section header independently clickable in normal coding mode.
+- Clicking a section header hides or shows only the Code buttons belonging to that section, through the next section header.
+- Added a disclosure triangle (`▼` expanded / `▶` collapsed) to each section header.
+- Edit mode temporarily reveals all Code buttons so hidden sections remain fully editable.
+- Saved each section's collapsed/expanded state in project JSON and reusable Code-set JSON.
+- Updated Code-pane Help and current-version metadata.
+
 ## v0.6.180 — Current Version Metadata
 
 - Centralized the current Gravar version and release description in the application code.
