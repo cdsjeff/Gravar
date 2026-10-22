@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.185 — Force PT Explicit Only
+Gravar v0.6.186 — Project Media Calibration Persistence
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -13,6 +13,7 @@ Current release highlights:
 - Option–Return transcript-line splitting.
 - Parentheses-based parent/child tier interpretation is active only when CA → Child tiers is turned on.
 - Force PT timecodes is now the sole trigger for copying parent Start/Stop/Duration to child tiers, including double-parentheses child tiers.
+- Reloading the same V1 video referenced by a loaded project now preserves the project's saved waveform calibration instead of clearing it.
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
 
 Modules:
@@ -33,7 +34,7 @@ Modules:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.185 Standalone Web</title>
+<title>Gravar — Version 0.6.186 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -2886,6 +2887,7 @@ input[type=reset],
 <button id="saveProject" title="Save project JSON to Project folder or download">Save</button>
 <button id="closeProject" title="Close current project">Close</button>
 <button id="chooseDataFolder" title="Choose Project folder for project files, autosaves, and exports">Folder</button>
+<button class="soft hidden" id="reconnectProjectFolder" title="Reconnect the saved Project folder and restore missing V1, V2, and external audio files by their saved filenames">Reconnect</button>
 <button id="setupWorkspace" title="Establish a Gravar workspace with shared support folders and an initial project folder">Setup</button>
 <div class="workspace-setup-menu hidden" id="workspaceSetupMenu" aria-label="Establish Gravar Workspace">
   <div class="workspace-setup-title">Establish Gravar Workspace</div>
@@ -3015,7 +3017,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.185 — Standalone Web. Child-tier rows, including double-parentheses child tiers, inherit parent Start/Stop/Duration only while Force PT timecodes is checked; otherwise their own timecodes are preserved.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.186 — Standalone Web. Project waveform calibration now survives manual reattachment of the same saved V1 video after automatic media restore fails.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3035,7 +3037,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.185 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.186 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3570,6 +3572,8 @@ input[type=reset],
 /* Gravar V0.6.183: fixes startup failure in v0.6.182 by moving Code-filter methods from XSymbols to XTalkActionPalette, matching the object used by Code-pane initialization and event handlers. */
 /* Gravar V0.6.184: gates transcript-parentheses parent/child tagging behind CA Child tiers mode so parenthesized waveform-created rows retain their own timecodes when Child tiers is off. */
 /* Gravar V0.6.185: parent-tier timing is copied to child tiers only while Force PT timecodes is explicitly checked, including double-parentheses child tiers. */
+/* Gravar V0.6.186: project-load media recovery remembers the expected V1 filename and preserves saved waveform alignment when that same video is manually reattached; genuinely different V1 files still reset calibration. */
+/* Gravar V0.6.187: remembers Chromium Project-folder handles, exposes a Reconnect button only when folder access is unavailable, and restores V1, V2, and external audio by saved filenames after permission is renewed. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3579,9 +3583,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.185',
+  version: '0.6.187',
   label: 'Standalone Web',
-  description: 'Child-tier timing inheritance now occurs only when Force PT timecodes is checked, including double-parentheses child tiers; when Force PT is off, child tiers retain their own Start/Stop/Duration. Parentheses tier tagging still requires CA Child tiers mode; includes Code-based transcript filtering, collapsible Code sections, native .dote import, waveform calibration recovery, waveform interval insertion, Point Undo, preview, and transcript-line split.',
+  description: 'Project-folder recovery now remembers Chromium folder handles, shows Reconnect only when a loaded project cannot access its saved folder, and restores V1, V2, and external audio by saved filenames after permission is renewed. Saved waveform calibration is preserved during same-project media recovery; Force PT remains the sole trigger for parent-timecode inheritance on child tiers.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -3608,6 +3612,8 @@ const XState = {
   videoUrl: null,
   videoKey: null,
   videoName: '',
+  projectExpectedVideoName: '',
+  projectExpectedVideoKey: '',
   videoBlob: null,
   videoType: '',
   primaryVideoVisible: true,
@@ -3729,6 +3735,9 @@ const XState = {
   autosaveBackupLimit: 1,
   dataDirHandle: null,
   dataDirName: '',
+  projectExpectedFolderName: '',
+  projectReconnectHandle: null,
+  projectReconnectData: null,
   workspaceDirHandle: null,
   workspaceDirName: '',
   workspaceProjectsDirHandle: null,
@@ -3833,6 +3842,7 @@ const XDom = {
     this.closeHelpPopup=this.q('closeHelpPopup');
     this.downloadFormattedHelp=this.q('downloadFormattedHelp');
     this.chooseDataFolder=this.q('chooseDataFolder');
+    this.reconnectProjectFolder=this.q('reconnectProjectFolder');
     this.setupWorkspace=this.q('setupWorkspace');
     this.workspaceSetupMenu=this.q('workspaceSetupMenu');
     this.workspaceSetupName=this.q('workspaceSetupName');
@@ -10079,6 +10089,39 @@ function showVideoLoadHelp(file){
 }
 
 const XVideo = {
+  normalizedPrimaryVideoName(name){
+    return String(name||'').trim().toLowerCase();
+  },
+  manualLoadMatchesProjectVideo(file){
+    const incoming=this.normalizedPrimaryVideoName(file && file.name);
+    if(!incoming) return false;
+    const expected=this.normalizedPrimaryVideoName(XState.projectExpectedVideoName);
+    const current=this.normalizedPrimaryVideoName(XState.videoName);
+    const expectedKey=String(XState.projectExpectedVideoKey||'');
+    const incomingKey=(typeof XVideoStore !== 'undefined' && typeof XVideoStore.keyForFile === 'function') ? XVideoStore.keyForFile(file) : '';
+
+    // Newer projects normally have the IndexedDB recovery key, which contains
+    // filename + byte size + lastModified. Prefer that identity. A copied file
+    // can acquire a different lastModified timestamp, so exact filename + byte
+    // size is accepted as the same media when the saved key provides that size.
+    if(expectedKey && incomingKey){
+      if(incomingKey===expectedKey) return true;
+      const keyTail=expectedKey.match(/-(\d+)-(\d+)$/);
+      const expectedSize=keyTail ? Number(keyTail[1]) : 0;
+      if(expected && incoming===expected && expectedSize>0 && Number(file.size)===expectedSize) return true;
+      return false;
+    }
+
+    // Older projects may have only a filename. In that case use the saved name,
+    // or the currently attached V1 name when the user is simply reloading it.
+    return !!((expected && incoming===expected) || (current && incoming===current));
+  },
+  hasWaveformAlignmentState(){
+    return Math.abs(Number(XState.waveformOffsetSeconds)||0)>0.001 ||
+      Math.abs(Number(XState.waveformAbsoluteOffsetSeconds)||0)>0.001 ||
+      (Array.isArray(XState.waveformCalibrationPoints) && XState.waveformCalibrationPoints.length>0) ||
+      Math.abs(Number(XState.waveformDriftAnchorOffset)||0)>0.001;
+  },
   attachBlob(blob,name,type,key,statusMessage){
     if(!blob) return;
 
@@ -10437,19 +10480,35 @@ const XVideo = {
     try{
       const compatibility = describeVideoCompatibility(file);
       XStatus.set(compatibility.message);
-      if(typeof XWaveform !== 'undefined' && typeof XWaveform.resetCalibration === 'function') XWaveform.resetCalibration({keepDisplay:true});
+
+      // v0.6.186: A project may restore its transcript/calibration even when the
+      // browser cannot reopen the saved video. If the user then manually selects
+      // the same V1 filename recorded by the project, keep that saved calibration.
+      // Loading an unrelated V1 retains the historical behavior and starts with
+      // a clean waveform calibration.
+      const preserveCalibration=this.manualLoadMatchesProjectVideo(file);
+      const hadAlignment=this.hasWaveformAlignmentState();
+      if(!preserveCalibration && typeof XWaveform !== 'undefined' && typeof XWaveform.resetCalibration === 'function') XWaveform.resetCalibration({keepDisplay:true});
 
       this.attachBlob(
         file,
         file.name||'video',
         file.type||'video/mp4',
         '',
-        'Video loaded: '+(file.name||'video')
+        'Video loaded: '+(file.name||'video')+(preserveCalibration && hadAlignment ? ' — saved waveform calibration preserved.' : '')
       );
+      // The just-loaded V1 becomes the new expected media identity for subsequent
+      // reloads in this session, whether calibration was preserved or reset.
+      XState.projectExpectedVideoName=file.name||'';
+      XState.projectExpectedVideoKey=(typeof XVideoStore !== 'undefined' && typeof XVideoStore.keyForFile === 'function') ? XVideoStore.keyForFile(file) : '';
+      if(preserveCalibration){
+        if(typeof XWaveform !== 'undefined' && typeof XWaveform.updateOffsetLabel === 'function') XWaveform.updateOffsetLabel();
+        if(typeof XWaveform !== 'undefined' && typeof XWaveform.draw === 'function') requestAnimationFrame(()=>XWaveform.draw());
+      }
       const key=await XVideoStore.rememberWithTimeout(file,10000);
       if(key){
         XState.videoKey=key;
-        XStatus.set('Video loaded and remembered for project restore: '+(file.name||'video'));
+        XStatus.set('Video loaded and remembered for project restore: '+(file.name||'video')+(preserveCalibration && hadAlignment ? ' Saved waveform calibration preserved.' : ''));
         XFiles.autosave();
       }
     }catch(err){
@@ -13437,7 +13496,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Setup','Loads or saves the Gravar JSON project, closes the current workspace after confirmation, selects the Project folder, or establishes a Gravar workspace with shared support folders.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local media file. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local V1 media file. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','When Child tiers is checked, rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier, rows beginning with a single ( are parent tiers, and italic Speaker rows can also be child tiers. When Child tiers is off, parentheses are ordinary transcript text and rows retain their own timecodes.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values, including child tiers marked with double parentheses. When unchecked, child tiers retain their own Start/Stop/Dur values; merely becoming a child tier does not replace their timing.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -13663,6 +13722,73 @@ const XActivity = {
    XFiles
 ========================= */
 
+
+const XFolderStore = {
+  dbName:'gravar-folder-store',
+  storeName:'folders',
+
+  open(){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB){ reject(new Error('IndexedDB is not available.')); return; }
+      const request=indexedDB.open(this.dbName,1);
+      request.onupgradeneeded=()=>{
+        const db=request.result;
+        if(!db.objectStoreNames.contains(this.storeName)) db.createObjectStore(this.storeName,{keyPath:'key'});
+      };
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error||new Error('Could not open folder store.'));
+      request.onblocked=()=>reject(new Error('Folder store is blocked by another browser tab or process.'));
+    });
+  },
+
+  keyForName(name){ return 'project-folder::'+String(name||'').trim(); },
+
+  async rememberProjectFolder(handle){
+    if(!handle || !handle.name) return false;
+    if(window.gravarDesktopFs && window.gravarDesktopFs.isElectron===true) return false;
+    try{
+      const db=await this.open();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(this.storeName,'readwrite');
+        tx.objectStore(this.storeName).put({
+          key:this.keyForName(handle.name),
+          name:handle.name,
+          handle,
+          savedAt:new Date().toISOString()
+        });
+        tx.oncomplete=resolve;
+        tx.onerror=()=>reject(tx.error||new Error('Could not remember Project folder.'));
+        tx.onabort=()=>reject(tx.error||new Error('Project-folder storage transaction was aborted.'));
+      });
+      db.close();
+      return true;
+    }catch(err){
+      console.warn('Could not remember Project folder handle in browser storage.',err);
+      return false;
+    }
+  },
+
+  async retrieveProjectFolder(name){
+    const clean=String(name||'').trim();
+    if(!clean) return null;
+    let db=null;
+    try{
+      db=await this.open();
+      const record=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(this.storeName,'readonly');
+        const request=tx.objectStore(this.storeName).get(this.keyForName(clean));
+        request.onsuccess=()=>resolve(request.result||null);
+        request.onerror=()=>reject(request.error||new Error('Could not retrieve Project folder.'));
+      });
+      db.close();
+      return record && record.handle ? record.handle : null;
+    }catch(err){
+      if(db){ try{ db.close(); }catch(closeErr){} }
+      console.warn('Could not retrieve remembered Project folder handle.',err);
+      return null;
+    }
+  }
+};
 
 const XVideoStore = {
   // Gravar keeps its own current media database, but old XTrans/early-Gravar
@@ -13934,6 +14060,10 @@ const XFiles = {
       XState.videoClipsRootHandle=videoRoot;
       XState.dataDirHandle=initialProjectDir;
       XState.dataDirName=initialProjectName;
+      XState.projectExpectedFolderName=initialProjectName;
+      XState.projectReconnectHandle=null;
+      try{ await XFolderStore.rememberProjectFolder(initialProjectDir); }catch(storeErr){ console.warn('Could not remember workspace Project folder handle.',storeErr); }
+      this.setReconnectProjectFolderVisible(false);
       XState.projectName=initialProjectName;
       XState.projectVideoSavedName='';
       if(XDom.projectName) XDom.projectName.value=initialProjectName;
@@ -13975,6 +14105,10 @@ const XFiles = {
     }
 
     XState.rows=[];
+    XState.projectExpectedFolderName='';
+    XState.projectReconnectHandle=null;
+    XState.projectReconnectData=null;
+    this.setReconnectProjectFolderVisible(false);
     XState.activeRowId=null;
     XState.selectedRowIds=new Set();
     XState.selectionAnchorId=null;
@@ -13983,6 +14117,8 @@ const XFiles = {
     XState.videoUrl=null;
     XState.videoKey=null;
     XState.videoName='';
+    XState.projectExpectedVideoName='';
+    XState.projectExpectedVideoKey='';
     XState.videoBlob=null;
     XState.videoType='';
     XState.primaryVideoVisible=true;
@@ -14126,8 +14262,8 @@ const XFiles = {
       hideMainTranscriptWhenPopout:!!XState.hideMainTranscriptWhenPopout,
       showCommentRows:XState.showCommentRows!==false,
       visibleFilterRowIds:(typeof XTranscript!=='undefined' && typeof XTranscript.transcriptFilterResult==='function' && XTranscript.transcriptFilterResult().visible) ? Array.from(XTranscript.transcriptFilterResult().visible) : null,
-      dataFolderName:XState.dataDirName || '',
-      projectFolderName:XState.dataDirName || '',
+      dataFolderName:XState.dataDirName || XState.projectExpectedFolderName || '',
+      projectFolderName:XState.dataDirName || XState.projectExpectedFolderName || '',
       workspaceFolderName:XState.workspaceDirName || '',
       workspaceFrameClipFolderName:XState.frameClipDirName || '',
       workspaceVideoClipFolderName:XState.videoClipDirName || '',
@@ -14201,6 +14337,205 @@ const XFiles = {
 
   projectFileName(){
     return this.projectBaseName()+'-gravar-project.json';
+  },
+
+  setReconnectProjectFolderVisible(visible, folderName){
+    if(!XDom.reconnectProjectFolder) return;
+    const name=String(folderName||XState.projectExpectedFolderName||'').trim();
+    XDom.reconnectProjectFolder.classList.toggle('hidden',!visible);
+    XDom.reconnectProjectFolder.disabled=!visible;
+    XDom.reconnectProjectFolder.textContent='Reconnect';
+    XDom.reconnectProjectFolder.title=name
+      ? 'Reconnect Project folder "'+name+'" and automatically restore missing V1, V2, and external audio by their saved filenames.'
+      : 'Reconnect the saved Project folder and automatically restore missing V1, V2, and external audio by their saved filenames.';
+  },
+
+  async queryProjectFolderPermission(directoryHandle){
+    if(!directoryHandle) return 'unavailable';
+    try{
+      if(typeof directoryHandle.queryPermission === 'function') return await directoryHandle.queryPermission({mode:'readwrite'});
+      return 'granted';
+    }catch(err){
+      console.warn('Project folder permission query failed.',err);
+      return 'unavailable';
+    }
+  },
+
+  async activateProjectFolderHandle(handle, options){
+    if(!handle) return false;
+    const opts=options||{};
+    XState.dataDirHandle=handle;
+    XState.dataDirName=handle.name||XState.projectExpectedFolderName||'selected folder';
+    XState.projectExpectedFolderName=XState.dataDirName;
+    XState.projectReconnectHandle=null;
+    if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent=XState.dataDirName;
+    this.setReconnectProjectFolderVisible(false);
+    try{ await XFolderStore.rememberProjectFolder(handle); }catch(err){}
+    if(opts.sync!==false){
+      try{ await this.synchronizeAutosaveFolderState(); }catch(err){ console.warn('Could not synchronize Project-folder autosaves after reconnect.',err); }
+    }
+    return true;
+  },
+
+  async prepareProjectFolderReconnect(data){
+    const rememberedName=String((data && (data.projectFolderName||data.dataFolderName))||'').trim();
+    XState.projectExpectedFolderName=rememberedName;
+    XState.projectReconnectData=data||null;
+    XState.projectReconnectHandle=null;
+    this.setReconnectProjectFolderVisible(false);
+
+    if(!rememberedName || !this.hasDirectFolderAccess()) return false;
+
+    // Reuse a currently active matching handle first. Never search an old
+    // project's folder while loading a different project.
+    if(XState.dataDirHandle){
+      const activeHandle=XState.dataDirHandle;
+      const activeName=String(activeHandle.name||'');
+      if(activeName===rememberedName){
+        const permission=await this.queryProjectFolderPermission(activeHandle);
+        if(permission==='granted'){
+          await this.activateProjectFolderHandle(activeHandle,{sync:true});
+          return true;
+        }
+        if(permission==='prompt') XState.projectReconnectHandle=activeHandle;
+      }
+      XState.dataDirHandle=null;
+      XState.dataDirName='';
+    }
+
+    // Otherwise recover the structured-cloned directory handle saved by Chrome/Edge.
+    if(!XState.projectReconnectHandle){
+      const rememberedHandle=await XFolderStore.retrieveProjectFolder(rememberedName);
+      if(rememberedHandle){
+        const permission=await this.queryProjectFolderPermission(rememberedHandle);
+        if(permission==='granted'){
+          await this.activateProjectFolderHandle(rememberedHandle,{sync:true});
+          XStatus.set('Project folder access restored: '+rememberedName+'. Looking for saved project media.');
+          return true;
+        }
+        if(permission==='prompt') XState.projectReconnectHandle=rememberedHandle;
+      }
+    }
+
+    this.setReconnectProjectFolderVisible(true,rememberedName);
+    if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Reconnect '+rememberedName;
+    return false;
+  },
+
+  async projectFolderFileByNames(names, fallbackType){
+    if(!XState.dataDirHandle) return null;
+    const candidates=(Array.isArray(names)?names:[names]).map(v=>String(v||'').trim()).filter((v,i,a)=>v&&a.indexOf(v)===i);
+    for(const name of candidates){
+      try{
+        const fileHandle=await XState.dataDirHandle.getFileHandle(name,{create:false});
+        const file=await fileHandle.getFile();
+        if(file && file.size>=0){
+          return {blob:file,name:file.name||name,type:file.type||fallbackType||'application/octet-stream'};
+        }
+      }catch(err){
+        console.info('Project-folder media candidate not found:',name);
+      }
+    }
+    return null;
+  },
+
+  async restoreSecondaryVideoFromProjectFolder(data){
+    if(!data || !XState.dataDirHandle) return null;
+    return await this.projectFolderFileByNames([data.secondaryVideoName],data.secondaryVideoType||'video/mp4');
+  },
+
+  async restoreAudioFromProjectFolder(data){
+    if(!data || !XState.dataDirHandle) return null;
+    return await this.projectFolderFileByNames([data.audioName],data.audioType||'audio/wav');
+  },
+
+  async restoreMissingProjectMediaFromFolder(data){
+    const source=data||XState.projectReconnectData;
+    if(!source || !XState.dataDirHandle) return {v1:false,v2:false,audio:false};
+    const restored={v1:false,v2:false,audio:false};
+
+    if(!(typeof XVideo!=='undefined' && XVideo.hasVideo && XVideo.hasVideo())){
+      const record=await this.restoreVideoFromProjectFolder(source);
+      if(record && record.blob){
+        XVideo.attachBlob(record.blob,record.name||source.videoName||'project-folder-video',record.type||source.videoType||'video/mp4',source.videoKey||'','Project and Project-folder V1 restored: '+(record.name||source.videoName||'video'));
+        restored.v1=true;
+      }
+    }
+
+    if(!(typeof XVideo!=='undefined' && XVideo.hasSecondaryVideo && XVideo.hasSecondaryVideo()) && source.secondaryVideoName){
+      const record=await this.restoreSecondaryVideoFromProjectFolder(source);
+      if(record && record.blob){
+        XVideo.attachSecondaryBlob(record.blob,record.name||source.secondaryVideoName,record.type||source.secondaryVideoType||'video/mp4',source.secondaryVideoKey||'','Project and Project-folder V2 restored: '+(record.name||source.secondaryVideoName||'video'));
+        restored.v2=true;
+      }
+    }
+
+    if(!(typeof XVideo!=='undefined' && XVideo.hasAudio && XVideo.hasAudio()) && source.audioName){
+      const record=await this.restoreAudioFromProjectFolder(source);
+      if(record && record.blob){
+        XVideo.attachAudioBlob(record.blob,record.name||source.audioName,record.type||source.audioType||'audio/wav',source.audioKey||'','Project and Project-folder external audio restored: '+(record.name||source.audioName||'audio'),{noAutosave:true,preserveCalibration:true});
+        restored.audio=true;
+      }
+    }
+
+    if(typeof XWaveform!=='undefined' && typeof XWaveform.updateOffsetLabel==='function') XWaveform.updateOffsetLabel();
+    if(typeof XWaveform!=='undefined' && typeof XWaveform.draw==='function') requestAnimationFrame(()=>XWaveform.draw());
+    return restored;
+  },
+
+  async reconnectProjectFolder(){
+    if(!this.hasDirectFolderAccess()){
+      this.showSafariSaveGuidance(true);
+      return;
+    }
+    const expected=String(XState.projectExpectedFolderName||'').trim();
+    let handle=XState.projectReconnectHandle||null;
+
+    try{
+      if(handle && typeof handle.requestPermission==='function'){
+        const permission=await handle.requestPermission({mode:'readwrite'});
+        if(permission!=='granted') handle=null;
+      }
+
+      if(!handle){
+        XStatus.set(expected ? 'Choose the saved Project folder: '+expected : 'Choose the Project folder for this project.');
+        handle=await window.showDirectoryPicker({mode:'readwrite'});
+        const permission=await this.verifyDirectoryPermission(handle);
+        if(!permission) throw new Error('Project folder permission was not granted.');
+      }
+
+      if(expected && handle.name && handle.name!==expected){
+        const useDifferent=confirm('This project was saved with Project folder "'+expected+'", but you selected "'+handle.name+'".\n\nUse the selected folder and search it for the saved media filenames?');
+        if(!useDifferent){
+          this.setReconnectProjectFolderVisible(true,expected);
+          XStatus.set('Project-folder reconnect cancelled.');
+          return;
+        }
+      }
+
+      await this.activateProjectFolderHandle(handle,{sync:true});
+      const restored=await this.restoreMissingProjectMediaFromFolder(XState.projectReconnectData);
+      const labels=[];
+      if(restored.v1) labels.push('V1');
+      if(restored.v2) labels.push('V2');
+      if(restored.audio) labels.push('audio');
+      const wanted=[];
+      const data=XState.projectReconnectData||{};
+      if(data.videoName||data.projectVideoSavedName) wanted.push('V1');
+      if(data.secondaryVideoName) wanted.push('V2');
+      if(data.audioName) wanted.push('audio');
+      XStatus.set('Project folder reconnected: '+(handle.name||expected||'folder')+'. '+(labels.length ? 'Restored '+labels.join(', ')+' from saved filenames. ' : (wanted.length ? 'No missing saved media filenames were found in that folder. ' : 'No saved media references required restoration. '))+'Saved waveform calibration was preserved.');
+    }catch(err){
+      if(err && err.name==='AbortError'){
+        this.setReconnectProjectFolderVisible(true,expected);
+        XStatus.set('Project-folder reconnect cancelled.');
+        return;
+      }
+      console.error(err);
+      this.setReconnectProjectFolderVisible(true,expected);
+      alert('Could not reconnect the Project folder. Choose the folder that contains this project and its saved media files.');
+      XStatus.set('Project-folder reconnect failed.');
+    }
   },
 
   async verifyProjectFolderPermission(){
@@ -14339,6 +14674,7 @@ const XFiles = {
       XDom.saveProject.textContent='Save As…';
       XDom.saveProject.title='Download the project JSON. In Safari, choose the team project folder in the download save dialog.';
     }
+    if(XDom.reconnectProjectFolder) XDom.reconnectProjectFolder.classList.add('hidden');
     if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Choose at each save';
   },
 
@@ -14366,7 +14702,11 @@ const XFiles = {
       const handle=await window.showDirectoryPicker({mode:'readwrite'});
       XState.dataDirHandle=handle;
       XState.dataDirName=handle.name||'selected folder';
+      XState.projectExpectedFolderName=XState.dataDirName;
+      XState.projectReconnectHandle=null;
       XState.projectVideoSavedName='';
+      this.setReconnectProjectFolderVisible(false);
+      try{ await XFolderStore.rememberProjectFolder(handle); }catch(storeErr){ console.warn('Could not remember Project folder handle.',storeErr); }
       if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent=XState.dataDirName;
       try{ await this.synchronizeAutosaveFolderState(); }catch(folderErr){ console.warn('Could not synchronize Project-folder autosaves and Old_files.', folderErr); }
 
@@ -14549,7 +14889,7 @@ const XFiles = {
       }
     }
 
-    XStatus.set(data.videoName ? 'Project loaded. Reload or convert video manually: '+data.videoName : 'Project loaded. No video reference found.');
+    XStatus.set(data.videoName ? 'Project loaded. Reload or convert video manually: '+data.videoName+'. Reattaching that same V1 will preserve the saved waveform calibration.' : 'Project loaded. No video reference found.');
     return false;
   },
 
@@ -14569,6 +14909,11 @@ const XFiles = {
         alert('The project loaded, but Gravar could not restore the embedded secondary video.');
         return false;
       }
+    }
+    const folderRecord=await this.restoreSecondaryVideoFromProjectFolder(data);
+    if(folderRecord && folderRecord.blob){
+      XVideo.attachSecondaryBlob(folderRecord.blob, folderRecord.name||data.secondaryVideoName||'project-folder-secondary-video', folderRecord.type||data.secondaryVideoType||'video/mp4', data.secondaryVideoKey||'', 'Project and Project-folder secondary video restored: '+(folderRecord.name||data.secondaryVideoName||'video'));
+      return true;
     }
     if(data.secondaryVideoKey){
       try{
@@ -14603,6 +14948,11 @@ const XFiles = {
         alert('The project loaded, but Gravar could not restore the embedded external audio.');
         return false;
       }
+    }
+    const folderRecord=await this.restoreAudioFromProjectFolder(data);
+    if(folderRecord && folderRecord.blob){
+      XVideo.attachAudioBlob(folderRecord.blob, folderRecord.name||data.audioName||'project-folder-audio.wav', folderRecord.type||data.audioType||'audio/wav', data.audioKey||'', 'Project and Project-folder external audio attached: '+(folderRecord.name||data.audioName||'audio'), {noAutosave:true,preserveCalibration:true});
+      return true;
     }
     if(data.audioKey){
       try{
@@ -14642,6 +14992,11 @@ const XFiles = {
           notes:(r.notes==null?'':String(r.notes))
         }));
         XState.projectName=data.projectName||'';
+        // Keep the saved V1 identity even if browser/project-folder restoration fails.
+        // Manual Load video can then distinguish reattaching the same project video
+        // (preserve calibration) from selecting a genuinely different video (reset).
+        XState.projectExpectedVideoName=String(data.videoName||data.projectVideoSavedName||'').trim();
+        XState.projectExpectedVideoKey=String(data.videoKey||'').trim();
         XState.logHtml=String(data.logHtml||data.projectLogHtml||'');
         if(XDom.log) XDom.log.innerHTML=XRichText.toDisplayHtml(XState.logHtml||'');
         if(XDom.projectName) XDom.projectName.value=XState.projectName;
@@ -14822,10 +15177,14 @@ const XFiles = {
         }
         const rememberedProjectFolder=data.projectFolderName || data.dataFolderName || '';
         const rememberedWorkspaceFolder=data.workspaceFolderName || '';
-        if(rememberedProjectFolder && !XState.dataDirHandle && XDom.dataFolderStatus){
-          XDom.dataFolderStatus.textContent=this.hasDirectFolderAccess()
-            ? 'Re-designate '+rememberedProjectFolder
-            : 'Save As to '+rememberedProjectFolder;
+        XState.projectExpectedFolderName=String(rememberedProjectFolder||'').trim();
+        XState.projectReconnectData=data;
+        if(rememberedProjectFolder && this.hasDirectFolderAccess()){
+          await this.prepareProjectFolderReconnect(data);
+        }else if(rememberedProjectFolder && !XState.dataDirHandle && XDom.dataFolderStatus){
+          XDom.dataFolderStatus.textContent='Save As to '+rememberedProjectFolder;
+        }else{
+          this.setReconnectProjectFolderVisible(false);
         }
         if(data.projectVideoSavedName){
           XState.projectVideoSavedName=data.projectVideoSavedName;
@@ -14847,7 +15206,8 @@ const XFiles = {
         if(typeof this.restoreSecondaryVideoFromProject === 'function') await this.restoreSecondaryVideoFromProject(data);
         if(typeof this.restoreAudioFromProject === 'function') await this.restoreAudioFromProject(data);
         if(!videoRestored && data.videoName){
-          XStatus.set('Project transcript loaded. Reload or convert video manually if needed: '+data.videoName);
+          const canReconnect=!!(this.hasDirectFolderAccess() && rememberedProjectFolder);
+          XStatus.set('Project transcript loaded. '+(canReconnect ? 'Use Reconnect to authorize '+rememberedProjectFolder+' and let Gravar search for '+data.videoName+', V2, and external audio. ' : 'Reload or convert video manually if needed: '+data.videoName+'. ')+'Reattaching the same V1 will preserve saved waveform calibration.');
         }
       }catch(err){
         console.error(err);
@@ -16982,6 +17342,7 @@ const XFiles = {
     if(XDom.openFilesPopup) XDom.openFilesPopup.onclick=()=>this.showFilesPopup();
     if(XDom.closeFilesPopup) XDom.closeFilesPopup.onclick=()=>this.hideFilesPopup();
     if(XDom.chooseDataFolder) XDom.chooseDataFolder.onclick=()=>this.chooseDataFolder();
+    if(XDom.reconnectProjectFolder) XDom.reconnectProjectFolder.onclick=()=>this.reconnectProjectFolder();
     if(XDom.setupWorkspace) XDom.setupWorkspace.onclick=()=>this.openWorkspaceSetupMenu();
     if(XDom.workspaceSetupCancel) XDom.workspaceSetupCancel.onclick=()=>this.closeWorkspaceSetupMenu();
     if(XDom.workspaceSetupCreate) XDom.workspaceSetupCreate.onclick=()=>this.establishWorkspaceSetup();
@@ -27328,7 +27689,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.185';
+  const EXPECTED_VERSION='0.6.186';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{

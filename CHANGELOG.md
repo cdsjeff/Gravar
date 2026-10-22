@@ -1,5 +1,26 @@
 # Gravar Changelog
 
+## v0.6.187 — 2026-10-22 — Project Folder Reconnect and Media Recovery
+
+- Added a **Reconnect** control to **Files → Project** that is hidden during normal operation and appears only when a loaded project remembers a Project folder that Gravar cannot currently access.
+- Chromium browsers can now store the selected Project-folder handle in IndexedDB. On a later project load, Gravar checks the remembered handle without triggering a permission prompt automatically.
+- If the remembered folder is still authorized, Gravar reconnects it automatically. If permission is in the browser's `prompt` state, the Reconnect button lets the user renew access with an explicit click.
+- If no usable remembered handle is available, Reconnect opens the folder picker so the user can choose the saved Project folder again.
+- After reconnection, Gravar automatically searches the approved folder for the saved **V1**, **V2**, and external-audio filenames and restores any that are present.
+- Project-folder media restoration preserves the waveform Absolute offset and Point calibration data already loaded from the project JSON.
+- A Project folder from a previously loaded project is no longer searched while loading a different project.
+- The remembered Project-folder name now remains in subsequently saved JSON even while folder permission is temporarily unavailable.
+- Updated Files help and all current-version metadata to v0.6.187.
+
+## v0.6.186 — 2026-10-22 — Project Media Calibration Persistence
+
+- Diagnosed a project-reload failure path in which transcript and saved waveform calibration loaded correctly, but a missing/unavailable V1 video required manual reattachment.
+- Manual **Load video** now preserves the project’s existing waveform offset and calibration points when the selected V1 matches the video identity saved by the project.
+- Newer projects use the saved browser media key (filename, byte size, and modification metadata) for a stronger same-video check; older projects fall back to the saved filename.
+- Loading a genuinely different V1 continues to clear waveform calibration, preventing old alignment from being carried onto unrelated media.
+- Project-load status now explicitly tells the user that manually reattaching the same V1 preserves saved calibration.
+- Updated in-app version/build metadata and Files help.
+
 ## v0.6.185 — Force PT Timecodes Explicit Only
 
 - Deep diagnostic traced parent-timecode inheritance through the main child-tier tagging path, the v0.6.184 parentheses wrapper, and the transcript pop-out's independent retagging path.

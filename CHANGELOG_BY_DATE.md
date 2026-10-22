@@ -2,6 +2,25 @@
 
 > **Dating note:** Dates below are based on the Gravar development record available in this project. Where an exact release date was not recorded, the revision remains under **Date not recorded** rather than being assigned an invented date.
 
+## 2026-10-22
+
+### v0.6.187 — Project Folder Reconnect and Media Recovery
+
+- Added a normally hidden **Reconnect** button to Files → Project for projects whose saved Project folder is not currently accessible.
+- Remembers Chromium Project-folder handles in browser storage and checks their permission state without prompting during project load.
+- A user click on Reconnect renews permission or opens the folder picker when needed.
+- Once folder access is restored, Gravar searches for saved V1, V2, and external-audio filenames and restores those files when present.
+- Saved waveform calibration remains intact during this media recovery.
+- Prevents an old project's authorized folder from being searched while loading a different project.
+- Preserves the remembered Project-folder name in project JSON even during a temporary permission loss.
+
+### v0.6.186 — Project Media Calibration Persistence
+
+- Fixed the project-recovery workflow so saved waveform alignment survives manual reattachment of the same V1 video when automatic video restore is unavailable or fails.
+- Same-video detection prefers the saved media identity when available and falls back to filename compatibility for older projects.
+- Different replacement videos still start with clean waveform calibration.
+- Added explicit recovery guidance to project-load status and Files help.
+
 ## 2026-09-09
 
 ### v0.6.185 — Force PT Timecodes Explicit Only
