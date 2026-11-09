@@ -1,13 +1,17 @@
-# Gravar v0.6.187 Current Resources
+# Gravar v0.6.198 Current Resources
 
-This package contains the current standalone Gravar web application and repository-ready resources.
+This package contains the current standalone Gravar build and supporting repository files.
 
-- `index.html` — current Gravar application for GitHub Pages/static hosting
-- `Gravar_v0.6.187_Project_Folder_Reconnect.html` — versioned standalone application
-- `CHANGELOG.md` — revision history by version
-- `CHANGELOG_BY_DATE.md` — revision history organized by date
-- `Gravar_v0.6.187_SHA256.txt` — checksums
+- `Gravar_v0.6.198_Default_Symbols_Migration.html` — named standalone HTML build.
+- `index.html` — identical copy for GitHub Pages/static hosting.
+- `gravar-shared-symbols.json` — expanded 44-row built-in default Symbols palette supplied for Gravar.
+- `CHANGELOG.md` — version-organized revision history.
+- `CHANGELOG_BY_DATE.md` — date-organized revision history.
+- `ARCHITECTURE_AUDIT_v0.6.197.md` — deep modularity/message-passing audit that remains the architectural reference for this incremental release.
+- `SHA256.txt` — checksums for packaged resources.
 
-Current release: **v0.6.187** adds Project-folder reconnection and media recovery. The Reconnect button remains hidden unless a loaded project remembers a Project folder that Gravar cannot access. After permission is renewed, Gravar searches the approved folder for the saved V1, V2, and external-audio filenames and restores any files that are present while preserving saved waveform calibration.
+## v0.6.198 focus
 
-For the most reliable persistent Project-folder workflow on macOS, use the same hosted Gravar URL in Chrome or Edge. Safari continues to use the Save As workflow because it does not provide the same writable-directory access.
+This release fixes default-Symbol persistence across project generations. `XSymbolDefaults` now owns the built-in expanded palette and recognizes exact historical Gravar built-in palettes saved by older projects. Those legacy defaults migrate to the current 44-row palette automatically, while genuinely customized project Symbols are preserved.
+
+Symbols persistence now participates in the modular `XProjectState` adapter system introduced in v0.6.197; legacy top-level Symbols fields remain in saved JSON for backward compatibility.

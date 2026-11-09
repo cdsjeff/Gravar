@@ -1,0 +1,229 @@
+{
+  "app": "Gravar",
+  "type": "symbol-set",
+  "version": "1.0",
+  "savedAt": "2026-07-08T21:39:43.268Z",
+  "activeSymbolRowId": "o77sbszbui-mrclm25i",
+  "symbolRows": [
+    {
+      "id": "sym-pause-brief",
+      "symbol": "(.)",
+      "description": "brief pause"
+    },
+    {
+      "id": "sym-pause-timed",
+      "symbol": "(0.0)",
+      "description": "timed pause"
+    },
+    {
+      "id": "sym-overlap-start",
+      "symbol": "[",
+      "description": "overlap onset"
+    },
+    {
+      "id": "sym-overlap-end",
+      "symbol": "]",
+      "description": "overlap offset"
+    },
+    {
+      "id": "sym-latching",
+      "symbol": "↑",
+      "description": "upward pitch"
+    },
+    {
+      "id": "fuci8956n89-moq8ny3w",
+      "symbol": "↓",
+      "description": "downward pitch"
+    },
+    {
+      "id": "ha44llfcw1w-mrclgazr",
+      "type": "section",
+      "title": "Onset/Offset/Talk"
+    },
+    {
+      "id": "d7dj890vcuv-mrclgrwj",
+      "symbol": "⊢",
+      "description": ""
+    },
+    {
+      "id": "788pw9ff1z2-mrclgs8i",
+      "symbol": "⊣",
+      "description": ""
+    },
+    {
+      "id": "5tcxy3k42gr-mrclgse5",
+      "symbol": "↵",
+      "description": ""
+    },
+    {
+      "id": "ch2eaby8i98-mrcl5mmh",
+      "type": "section",
+      "title": "Arrows"
+    },
+    {
+      "id": "ofv85qfocle-mrcl5yhs",
+      "symbol": "→",
+      "description": ""
+    },
+    {
+      "id": "3xvj4qke9qv-moq4o7db",
+      "symbol": "←",
+      "description": ""
+    },
+    {
+      "id": "pn4auk0k2r8-mrcl6myy",
+      "symbol": "↑",
+      "description": ""
+    },
+    {
+      "id": "cul8akiqd78-mrcl72g7",
+      "symbol": "↓",
+      "description": ""
+    },
+    {
+      "id": "4zy6vv8jhz9-mrcl7y4g",
+      "type": "section",
+      "title": "Bracket"
+    },
+    {
+      "id": "80bxgyjg8ww-mrcl8jy3",
+      "symbol": "⎡",
+      "description": ""
+    },
+    {
+      "id": "cq9d5stze1-mrcl8k8a",
+      "symbol": "⎣",
+      "description": ""
+    },
+    {
+      "id": "7gz698pszvn-mrcl8kh2",
+      "symbol": "⎜",
+      "description": ""
+    },
+    {
+      "id": "0vw62lpglb7-mrclcyd9",
+      "symbol": "⟨ ⟩",
+      "description": ""
+    },
+    {
+      "id": "wibyperfwsm-mrcl9rhn",
+      "type": "section",
+      "title": "Triangles & Dots"
+    },
+    {
+      "id": "nf034ubbal-mrcl8koh",
+      "symbol": "△",
+      "description": ""
+    },
+    {
+      "id": "q7kt6j1855b-mrclakxe",
+      "symbol": "▽",
+      "description": ""
+    },
+    {
+      "id": "tgn6z64eas9-mrclalg4",
+      "symbol": "▲",
+      "description": ""
+    },
+    {
+      "id": "ghiv8qwma3-mrclalv5",
+      "symbol": "▼",
+      "description": ""
+    },
+    {
+      "id": "arze5j5h8fv-mrclc7n8",
+      "symbol": "●",
+      "description": ""
+    },
+    {
+      "id": "jufnsq4mhjm-mrclc806",
+      "symbol": "○",
+      "description": ""
+    },
+    {
+      "id": "76di3ehju69-mrclc87p",
+      "symbol": "◉",
+      "description": ""
+    },
+    {
+      "id": "3ucjgqdo87u-mrclc8hg",
+      "symbol": "◎ ⊕",
+      "description": ""
+    },
+    {
+      "id": "ogoopfwbzg-mrcllvj4",
+      "type": "section",
+      "title": "Square"
+    },
+    {
+      "id": "cy3pui9t3s-mrclm1f3",
+      "symbol": "⊟",
+      "description": ""
+    },
+    {
+      "id": "hekajwd6jo8-mrclm1r5",
+      "symbol": "⊡",
+      "description": ""
+    },
+    {
+      "id": "h0e72q7ic37-mrclm1xn",
+      "symbol": "⃞ □",
+      "description": ""
+    },
+    {
+      "id": "o77sbszbui-mrclm25i",
+      "symbol": "◪ ⊞ ⊠",
+      "description": ""
+    },
+    {
+      "id": "3ayxckoqopu-mrcldiba",
+      "type": "section",
+      "title": "Letters"
+    },
+    {
+      "id": "t3jo7i290a8-mrcldoo2",
+      "symbol": "⒜",
+      "description": ""
+    },
+    {
+      "id": "ushoiyj3m4-mrcldp2t",
+      "symbol": "⒝",
+      "description": ""
+    },
+    {
+      "id": "fdwrla5twei-mrcldpee",
+      "symbol": "⒞",
+      "description": ""
+    },
+    {
+      "id": "ms4o8df8qw-mrcldprc",
+      "symbol": "⒟ ⒠",
+      "description": ""
+    },
+    {
+      "id": "bwm5efepjle-mrclfn42",
+      "type": "section",
+      "title": "Lines"
+    },
+    {
+      "id": "2fzurzhnndh-mrclfucp",
+      "symbol": "¯",
+      "description": ""
+    },
+    {
+      "id": "bz9t5srl73-mrclfumf",
+      "symbol": "—",
+      "description": ""
+    },
+    {
+      "id": "0qv0qwp5seba-mrclfuxj",
+      "symbol": "_",
+      "description": ""
+    },
+    {
+      "id": "ym1jzvhxiad-mrclfv7q",
+      "symbol": "¦",
+      "description": ""
+    }
+  ]
+}

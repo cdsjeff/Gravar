@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.186 — Project Media Calibration Persistence
+Gravar v0.6.198 — Default Symbols Persistence
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -14,9 +14,23 @@ Current release highlights:
 - Parentheses-based parent/child tier interpretation is active only when CA → Child tiers is turned on.
 - Force PT timecodes is now the sole trigger for copying parent Start/Stop/Duration to child tiers, including double-parentheses child tiers.
 - Reloading the same V1 video referenced by a loaded project now preserves the project's saved waveform calibration instead of clearing it.
+- Files → Project → Project files is collapsed by default; click it to view file status and paths.
+- Click any file pathname to open a full-width wrapped path viewer; Path mode explicitly toggles between Full and Last 3 levels.
+- Files keeps the tabbed submenu layout; within Files → Project, Project, Codes & Symbols, then Project files appear in that order. Project name is a single persistent row at the bottom of the Files pane and remains visible on every Files submenu.
+- Built-in Symbols now load the expanded shared Gravar symbol set with section headers for onset/offset/talk, arrows, brackets, triangles & dots, squares, letters, and lines.
+- Play button cursor is now a normal pointer unless the playback-speed modifier is actively held (Command on macOS; Ctrl on non-Mac platforms).
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
 
-Modules:
+Core services:
+- XBus — lightweight cross-module message bus
+- XAutosaveCoordinator — coalesced edit-recovery saves
+- XMediaIdentity — media identity and same-file matching
+- XCalibration — waveform calibration state and mathematics
+- XTranscriptHierarchy — parent/child-tier rules and timing inheritance
+- XProjectState — extensible project serialization adapters
+- XCoreMessages — application-level message subscriptions
+
+Primary UI/application modules:
 - XState
 - XDom
 - XUtils
@@ -30,11 +44,17 @@ Modules:
 - XShortcuts
 - XScrollSync
 - XApp
+
+Architecture note for v0.6.198:
+- Cross-cutting rules are being moved from large UI modules into small single-responsibility services.
+- New cross-module behavior should prefer XBus messages or explicit service APIs over direct mutation of another UI module.
+- Project-state extensions should register with XProjectState rather than monkey-patching XFiles.payload().
+- Edit autosaves and transcript-popout synchronization are coalesced to avoid redundant full-project/full-transcript work.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.186 Standalone Web</title>
+<title>Gravar — Version 0.6.198 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -70,7 +90,8 @@ html,body{height:100%;margin:0;font-family:system-ui,-apple-system,BlinkMacSyste
 button,.filebtn{border:1px solid #cfd9e6;background:#fff;border-radius:8px;padding:4px 4px;min-height:28px;font:inherit;font-size:12px;line-height:1.05;display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--text);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .primary{background:var(--dark);color:#fff;border-color:var(--dark)}
 .soft{background:var(--soft)}
-#playBtn{cursor:ns-resize;user-select:none}
+#playBtn{cursor:pointer;user-select:none}
+#playBtn.play-speed-modifier{cursor:ns-resize}
 #playBtn.play-speed-dragging{filter:brightness(1.12)}
 input[type=file]{display:none}
 .autosave-label{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#334155;padding-left:0;white-space:nowrap}
@@ -1557,7 +1578,13 @@ button.primary,
 }
 
 .files-project-name-in-submenu{
+  grid-column:1 / -1;
   margin-top:4px;
+}
+.files-project-name-persistent{
+  margin-top:2px;
+  padding-top:6px;
+  border-top:1px solid var(--line2);
 }
 .files-submenu-note{
   grid-column:1/-1;
@@ -1639,6 +1666,98 @@ button.primary,
   padding:1px 2px!important;
   font-size:10.5px;
 }
+
+/* V0.6.192: compact rollups inside Files > Project. */
+.files-project-section-rollup-title{
+  grid-column:1 / -1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  cursor:pointer;
+  user-select:none;
+  font-size:10.5px;
+  font-weight:800;
+  line-height:1;
+  color:#334155;
+  padding:2px 2px 1px;
+  margin-top:1px;
+}
+.files-project-section-rollup-title:first-child{margin-top:0}
+.files-project-section-rollup-toggle{font-size:11px;line-height:1;color:#475569;min-width:12px;text-align:center}
+.files-project-rollup-content{
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:2px 3px;
+  min-width:0;
+}
+.files-project-rollup-content.rolled-up{display:none}
+.files-project-rollup-content.codes-symbols-content{grid-template-columns:1fr}
+
+/* V0.6.189: Project-file rollup plus explicit path viewer and mode toggle. */
+.files-project-group-label.project-files-rollup-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  cursor:pointer;
+  user-select:none;
+}
+.project-files-rollup-toggle{font-size:11px;line-height:1;color:#475569;min-width:12px;text-align:center}
+.project-file-status-block{
+  grid-column:1 / -1;
+  border:1px solid #d6dee8;
+  border-radius:8px;
+  background:#f8fafc;
+  padding:5px 6px 4px;
+  margin:1px 0 2px;
+  min-width:0;
+}
+.project-file-status-block.rolled-up{display:none}
+.project-file-status-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-bottom:3px;
+}
+.project-file-status-title{font-size:10.5px;font-weight:800;color:#334155;white-space:nowrap}
+.project-file-path-select{height:20px;min-height:20px;font-size:10px;padding:0 5px;max-width:118px;white-space:nowrap}
+.project-file-status-list{display:grid;grid-template-columns:58px 68px minmax(0,1fr);gap:2px 4px;align-items:center}
+.project-file-row{display:contents}
+.project-file-label{font-size:10px;font-weight:700;color:#475569;white-space:nowrap}
+.project-file-state{font-size:9.8px;white-space:nowrap}
+.project-file-state.status-loaded,.project-file-state.status-saved{color:#166534}
+.project-file-state.status-referenced,.project-file-state.status-loading{color:#92400e}
+.project-file-state.status-failed,.project-file-state.status-missing{color:#b91c1c}
+.project-file-state.status-none{color:#64748b}
+.project-file-path{
+  display:block;
+  min-width:0;
+  padding:1px 3px;
+  border:1px solid transparent;
+  border-radius:4px;
+  font-size:9.8px;
+  color:#334155;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.project-file-path:hover,.project-file-path:focus{border-color:#cbd5e1;background:#fff;outline:none}
+.project-file-path.no-path{cursor:default;color:#64748b}
+.project-file-path-viewer{
+  margin-top:4px;
+  border:1px solid #cbd5e1;
+  border-radius:6px;
+  background:#fff;
+  padding:4px 5px;
+}
+.project-file-path-viewer.hidden{display:none}
+.project-file-path-viewer-title{font-size:9.5px;font-weight:800;color:#475569;margin-bottom:2px}
+.project-file-path-viewer-value{font-size:9.8px;line-height:1.25;color:#0f172a;white-space:normal;overflow-wrap:anywhere;word-break:break-word;user-select:text}
+.project-file-status-note{font-size:8.8px;line-height:1.15;color:#64748b;margin-top:3px}
 
 /* V0.6.84: Files > Project workspace setup menu. */
 .workspace-setup-menu{
@@ -2882,7 +3001,8 @@ input[type=reset],
 </div>
 <div class="files-submenu-content">
 <div class="files-submenu-panel files-project-panel active" data-files-panel="project">
-<div class="files-project-group-label">Project</div>
+<div class="files-project-section-rollup-title" id="projectControlsRollupTitle" role="button" tabindex="0" aria-controls="projectControlsRollupContent" aria-expanded="false" title="Show or hide Project controls"><span>Project</span><span class="files-project-section-rollup-toggle" id="projectControlsRollupToggle" aria-hidden="true">▸</span></div>
+<div class="files-project-rollup-content rolled-up" id="projectControlsRollupContent">
 <label class="filebtn" for="projectFile" title="Load Gravar project JSON">Load</label><input accept=".json,application/json" id="projectFile" title="Load Gravar project JSON" type="file"/>
 <button id="saveProject" title="Save project JSON to Project folder or download">Save</button>
 <button id="closeProject" title="Close current project">Close</button>
@@ -2896,12 +3016,24 @@ input[type=reset],
   <div class="workspace-setup-actions"><button class="primary" id="workspaceSetupCreate" title="Choose a parent folder, create the workspace folders, and activate the initial project folder">Setup</button><button class="soft" id="workspaceSetupCancel" title="Cancel workspace setup">Cancel</button></div>
   <p class="workspace-setup-note">Creates Codes-Symbols, FrameClips, VideoClips, and Projects folders inside the workspace. Frame/V-Clip exports use project-specific subfolders automatically.</p>
 </div>
-<div class="files-project-group-label">Codes &amp; Symbols</div>
+</div>
+<div class="files-project-section-rollup-title" id="codesSymbolsRollupTitle" role="button" tabindex="0" aria-controls="codesSymbolsRollupContent" aria-expanded="false" title="Show or hide Codes &amp; Symbols controls"><span>Codes &amp; Symbols</span><span class="files-project-section-rollup-toggle" id="codesSymbolsRollupToggle" aria-hidden="true">▸</span></div>
+<div class="files-project-rollup-content codes-symbols-content rolled-up" id="codesSymbolsRollupContent">
 <div class="files-shared-row files-shared-combined"><span class="files-shared-label">Codes:</span><button id="importTalkCodeSet" title="Open a file chooser so you can navigate to your shared Codes/Symbols folder and import a reusable Code set JSON. The current Codes are still saved automatically inside each project.">Import</button><button id="exportTalkCodeSet" title="Open a save dialog so you can navigate to your shared Codes/Symbols folder and export the current Code set JSON. The current Codes are also saved automatically inside each project.">Export</button><span class="files-shared-label">Symbols:</span><button id="importSymbolSet" title="Open a file chooser so you can navigate to your shared Codes/Symbols folder and import a reusable Symbols set JSON. The current Symbols are still saved automatically inside each project.">Import</button><button id="exportSymbolSet" title="Open a save dialog so you can navigate to your shared Codes/Symbols folder and export the current Symbols set JSON. The current Symbols are also saved automatically inside each project.">Export</button><input accept=".json,application/json" id="talkCodeSetFile" title="Choose a reusable Code set JSON from your shared Codes/Symbols folder" type="file"/><input accept=".json,application/json" id="symbolSetFile" title="Choose a reusable Symbols set JSON from your shared Codes/Symbols folder" type="file"/></div>
 </div>
-<div class="files-popup-project-name files-project-name-in-submenu">
-<label class="project-name-label" for="projectName">Project name</label>
-<input class="project-name-input" id="projectName" placeholder="Optional saved project name" type="text"/>
+<div class="files-project-group-label project-files-rollup-title" id="projectFilesRollupTitle" role="button" tabindex="0" aria-controls="projectFileStatusBlock" aria-expanded="false" title="Show or hide Project file locations and load status"><span>Project files</span><span class="project-files-rollup-toggle" id="projectFilesRollupToggle" aria-hidden="true">▸</span></div>
+<div class="project-file-status-block rolled-up" id="projectFileStatusBlock">
+  <div class="project-file-status-head"><span class="project-file-status-title">Locations &amp; load status</span><button class="soft project-file-path-select" id="projectFilePathMode" type="button" data-mode="short" title="Toggle pathname display between the last three hierarchy levels and the fullest path Gravar can know">Path: Last 3</button></div>
+  <div class="project-file-status-list" id="projectFileStatusList">
+    <div class="project-file-row"><span class="project-file-label">Project JSON</span><span class="project-file-state" data-file-status="project"></span><span class="project-file-path" data-file-path="project" role="button" tabindex="0" aria-label="Show Project JSON pathname"></span></div>
+    <div class="project-file-row"><span class="project-file-label">Transcript</span><span class="project-file-state" data-file-status="transcript"></span><span class="project-file-path" data-file-path="transcript" role="button" tabindex="0" aria-label="Show Transcript pathname"></span></div>
+    <div class="project-file-row"><span class="project-file-label">V1</span><span class="project-file-state" data-file-status="v1"></span><span class="project-file-path" data-file-path="v1" role="button" tabindex="0" aria-label="Show V1 pathname"></span></div>
+    <div class="project-file-row"><span class="project-file-label">V2</span><span class="project-file-state" data-file-status="v2"></span><span class="project-file-path" data-file-path="v2" role="button" tabindex="0" aria-label="Show V2 pathname"></span></div>
+    <div class="project-file-row"><span class="project-file-label">Audio</span><span class="project-file-state" data-file-status="audio"></span><span class="project-file-path" data-file-path="audio" role="button" tabindex="0" aria-label="Show Audio pathname"></span></div>
+  </div>
+  <div class="project-file-path-viewer hidden" id="projectFilePathViewer" aria-live="polite"><div class="project-file-path-viewer-title" id="projectFilePathViewerTitle">Selected path</div><div class="project-file-path-viewer-value" id="projectFilePathViewerValue"></div></div>
+  <div class="project-file-status-note">Click a pathname to show it below. Path: Last 3 / Full changes both the list and selected pathname. Full means the fullest location available to Gravar; browsers may hide the macOS /Users/... absolute path.</div>
+</div>
 </div>
 <div class="files-submenu-panel" data-files-panel="import">
 <label class="filebtn" for="tsvFile">Load TSV</label><input accept=".tsv,text/tab-separated-values,text/plain" id="tsvFile" title="Load TSV transcript" type="file"/>
@@ -2951,6 +3083,10 @@ input[type=reset],
 </select>
 </div>
 </div>
+</div>
+<div class="files-popup-project-name files-project-name-persistent">
+<label class="project-name-label" for="projectName">Project name</label>
+<input class="project-name-input" id="projectName" placeholder="Optional saved project name" type="text"/>
 </div>
 </div>
 </div><div class="format-pane hidden" id="wavePane" title="Waveform tools: adjust amplitude, choose time frame, calibrate waveform offset, and use waveform drag/scrub gestures in the main waveform display."><div class="left-pane-title"><span class="left-pane-title-text">Waveform</span><button class="pane-help-btn" data-pane-help="wave" title="Wave pane help, including waveform drag interval tools">?</button></div><div class="controls-wave-grid">
@@ -3017,7 +3153,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.186 — Standalone Web. Project waveform calibration now survives manual reattachment of the same saved V1 video after automatic media restore fails.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.198 — Standalone Web. This build makes the expanded shared Symbols palette a durable application default. Legacy built-in symbol palettes saved by older projects are migrated to the expanded default, while genuinely customized project symbol sets are preserved. Symbols persistence is now owned by the Symbols subsystem through XProjectState rather than direct Files-module restore logic.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3037,7 +3173,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.186 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.198 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3060,6 +3196,7 @@ input[type=reset],
 <li><strong>Persistent controls:</strong> timing, line management, playback, transport, Follow, Delete, and frame-step buttons.</li>
 </ul>
 <h3>Files, projects, autosave, and imports</h3>
+<p>Within <strong>Files → Project</strong>, <strong>Project</strong> and <strong>Codes &amp; Symbols</strong> are collapsed until selected, followed by the separate <strong>Project files</strong> rollup. <strong>Project name</strong> is always visible at the bottom of the Files pane, including on Import, Export, Diag, and Auto.</p>
 <ul>
 <li><strong>Project:</strong> Load, Save, Close, and Folder manage Gravar project JSON and the Project folder. Current Codes, Symbols, Groups, Code styles, and Group definitions are saved in the project. In Safari, direct folder writing is unavailable: Save becomes Save As…, and the user chooses the team project folder in Safari's download dialog.</li>
 <li><strong>Codes &amp; Symbols:</strong> import/export reusable Code and Symbols JSON libraries. These shared-library files are separate from the Project folder, while every project still embeds its current palettes.</li>
@@ -3574,6 +3711,15 @@ input[type=reset],
 /* Gravar V0.6.185: parent-tier timing is copied to child tiers only while Force PT timecodes is explicitly checked, including double-parentheses child tiers. */
 /* Gravar V0.6.186: project-load media recovery remembers the expected V1 filename and preserves saved waveform alignment when that same video is manually reattached; genuinely different V1 files still reset calibration. */
 /* Gravar V0.6.187: remembers Chromium Project-folder handles, exposes a Reconnect button only when folder access is unavailable, and restores V1, V2, and external audio by saved filenames after permission is renewed. */
+/* Gravar V0.6.188: adds Files → Project file-location/status panel for Project JSON, transcript source, V1, V2, and audio, with Full versus last-three-level path display and explicit browser path-privacy handling. */
+/* Gravar V0.6.189: rolls Project files closed by default, replaces the ambiguous path selector with an explicit Last 3 / Full toggle, and adds a click-to-view wrapped pathname display. */
+/* Gravar V0.6.191: restores the v0.6.189 tabbed Files submenu layout and places Project name at the bottom of the Project submenu after all other Project controls. */
+/* Gravar V0.6.193: orders Files > Project as Project, Codes & Symbols, then Project files, and keeps one Project name field persistently visible at the bottom of every Files submenu. */
+/* Gravar V0.6.194: loads the shared Gravar symbol-set JSON as the built-in default Symbols palette, including ↑ and ↓. */
+/* Gravar V0.6.195: replaces the built-in default Symbols palette with the expanded shared symbol set, preserving section headers, symbol IDs/descriptions, and the supplied active symbol. */
+/* Gravar V0.6.196: gates the Play-button up/down playback-speed cursor behind the platform playback-speed modifier (Command on macOS; Ctrl elsewhere) instead of showing it on ordinary hover. */
+/* Gravar V0.6.197: modular-core refactor adds XBus message passing, XCalibration/XMediaIdentity services, XTranscriptHierarchy, XProjectState adapters, coalesced edit autosaves, and coalesced transcript-popout sync; removes timer-based post-load video adjustment restore and makes the main transcript the authority for pop-out hierarchy mutation. */
+/* Gravar V0.6.198: makes the expanded shared Symbols palette a durable default, migrates exact legacy built-in palettes on project load, preserves genuinely customized palettes, and moves Symbols project persistence into an XProjectState adapter. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3583,9 +3729,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.187',
+  version: '0.6.198',
   label: 'Standalone Web',
-  description: 'Project-folder recovery now remembers Chromium folder handles, shows Reconnect only when a loaded project cannot access its saved folder, and restores V1, V2, and external audio by saved filenames after permission is renewed. Saved waveform calibration is preserved during same-project media recovery; Force PT remains the sole trigger for parent-timecode inheritance on child tiers.',
+  description: 'This build makes the expanded shared Symbols palette a durable application default. Exact legacy built-in symbol palettes saved by older projects migrate automatically to the expanded default, genuinely customized project symbol sets remain project-specific, and Symbols persistence now uses the modular XProjectState adapter layer rather than direct Files-module restore logic.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -3597,6 +3743,52 @@ const XBuild = Object.freeze({
   },
   releaseSummary(){
     return this.displayName()+'. '+this.description;
+  }
+});
+
+/* =========================
+   XSymbolDefaults — built-in Symbols baseline and legacy migration
+========================= */
+const XSymbolDefaults = Object.freeze({
+  activeId: "o77sbszbui-mrclm25i",
+  rows: Object.freeze([{"id":"sym-pause-brief","symbol":"(.)","description":"brief pause"},{"id":"sym-pause-timed","symbol":"(0.0)","description":"timed pause"},{"id":"sym-overlap-start","symbol":"[","description":"overlap onset"},{"id":"sym-overlap-end","symbol":"]","description":"overlap offset"},{"id":"sym-latching","symbol":"↑","description":"upward pitch"},{"id":"fuci8956n89-moq8ny3w","symbol":"↓","description":"downward pitch"},{"id":"ha44llfcw1w-mrclgazr","type":"section","title":"Onset/Offset/Talk"},{"id":"d7dj890vcuv-mrclgrwj","symbol":"⊢","description":""},{"id":"788pw9ff1z2-mrclgs8i","symbol":"⊣","description":""},{"id":"5tcxy3k42gr-mrclgse5","symbol":"↵","description":""},{"id":"ch2eaby8i98-mrcl5mmh","type":"section","title":"Arrows"},{"id":"ofv85qfocle-mrcl5yhs","symbol":"→","description":""},{"id":"3xvj4qke9qv-moq4o7db","symbol":"←","description":""},{"id":"pn4auk0k2r8-mrcl6myy","symbol":"↑","description":""},{"id":"cul8akiqd78-mrcl72g7","symbol":"↓","description":""},{"id":"4zy6vv8jhz9-mrcl7y4g","type":"section","title":"Bracket"},{"id":"80bxgyjg8ww-mrcl8jy3","symbol":"⎡","description":""},{"id":"cq9d5stze1-mrcl8k8a","symbol":"⎣","description":""},{"id":"7gz698pszvn-mrcl8kh2","symbol":"⎜","description":""},{"id":"0vw62lpglb7-mrclcyd9","symbol":"⟨ ⟩","description":""},{"id":"wibyperfwsm-mrcl9rhn","type":"section","title":"Triangles & Dots"},{"id":"nf034ubbal-mrcl8koh","symbol":"△","description":""},{"id":"q7kt6j1855b-mrclakxe","symbol":"▽","description":""},{"id":"tgn6z64eas9-mrclalg4","symbol":"▲","description":""},{"id":"ghiv8qwma3-mrclalv5","symbol":"▼","description":""},{"id":"arze5j5h8fv-mrclc7n8","symbol":"●","description":""},{"id":"jufnsq4mhjm-mrclc806","symbol":"○","description":""},{"id":"76di3ehju69-mrclc87p","symbol":"◉","description":""},{"id":"3ucjgqdo87u-mrclc8hg","symbol":"◎ ⊕","description":""},{"id":"ogoopfwbzg-mrcllvj4","type":"section","title":"Square"},{"id":"cy3pui9t3s-mrclm1f3","symbol":"⊟","description":""},{"id":"hekajwd6jo8-mrclm1r5","symbol":"⊡","description":""},{"id":"h0e72q7ic37-mrclm1xn","symbol":"⃞ □","description":""},{"id":"o77sbszbui-mrclm25i","symbol":"◪ ⊞ ⊠","description":""},{"id":"3ayxckoqopu-mrcldiba","type":"section","title":"Letters"},{"id":"t3jo7i290a8-mrcldoo2","symbol":"⒜","description":""},{"id":"ushoiyj3m4-mrcldp2t","symbol":"⒝","description":""},{"id":"fdwrla5twei-mrcldpee","symbol":"⒞","description":""},{"id":"ms4o8df8qw-mrcldprc","symbol":"⒟ ⒠","description":""},{"id":"bwm5efepjle-mrclfn42","type":"section","title":"Lines"},{"id":"2fzurzhnndh-mrclfucp","symbol":"¯","description":""},{"id":"bz9t5srl73-mrclfumf","symbol":"—","description":""},{"id":"0qv0qwp5seba-mrclfuxj","symbol":"_","description":""},{"id":"ym1jzvhxiad-mrclfv7q","symbol":"¦","description":""}]),
+  legacyBuiltIns: Object.freeze([
+    Object.freeze([
+      {id:'sym-pause-brief',symbol:'(.)',description:'brief pause'},
+      {id:'sym-pause-timed',symbol:'(0.0)',description:'timed pause'},
+      {id:'sym-overlap-start',symbol:'[',description:'overlap onset'},
+      {id:'sym-overlap-end',symbol:']',description:'overlap offset'},
+      {id:'sym-latching',symbol:'=',description:'latching'}
+    ]),
+    Object.freeze([
+      {id:'sym-pause-brief',symbol:'(.)',description:'brief pause'},
+      {id:'sym-pause-timed',symbol:'(0.0)',description:'timed pause'},
+      {id:'sym-overlap-start',symbol:'[',description:'overlap onset'},
+      {id:'sym-overlap-end',symbol:']',description:'overlap offset'},
+      {id:'sym-latching',symbol:'=',description:'latching'},
+      {id:'hlygs16yw9m-mp911k9f',symbol:'↑',description:''},
+      {id:'81i3kxusgfa-mp911kha',symbol:'↓',description:''}
+    ])
+  ]),
+  cloneRows(rows){ return (rows||[]).map(row=>Object.assign({},row)); },
+  freshRows(){ return this.cloneRows(this.rows); },
+  canonicalRow(row){
+    if(row&&row.type==='section') return {id:String(row.id||''),type:'section',title:String(row.title||'')};
+    return {id:String(row&&row.id||''),symbol:String(row&&row.symbol||''),description:String(row&&row.description||'')};
+  },
+  sameRows(a,b){
+    if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+    for(let i=0;i<a.length;i++){
+      const left=this.canonicalRow(a[i]), right=this.canonicalRow(b[i]);
+      if(JSON.stringify(left)!==JSON.stringify(right)) return false;
+    }
+    return true;
+  },
+  isLegacyBuiltIn(rows){ return this.legacyBuiltIns.some(legacy=>this.sameRows(rows,legacy)); },
+  resolveProjectRows(rows){
+    if(!Array.isArray(rows)||!rows.length) return {rows:this.freshRows(),migrated:true,reason:'missing'};
+    if(this.isLegacyBuiltIn(rows)) return {rows:this.freshRows(),migrated:true,reason:'legacy-default'};
+    return {rows:this.cloneRows(rows),migrated:false,reason:'project-custom'};
   }
 });
 
@@ -3738,6 +3930,8 @@ const XState = {
   projectExpectedFolderName: '',
   projectReconnectHandle: null,
   projectReconnectData: null,
+  projectFilePathMode: 'short',
+  projectFileLocations: null,
   workspaceDirHandle: null,
   workspaceDirName: '',
   workspaceProjectsDirHandle: null,
@@ -3770,14 +3964,8 @@ const XState = {
   videoRedPct: 100,
   videoGreenPct: 100,
   videoBluePct: 100,
-  symbolRows: [
-    {id:'sym-pause-brief', symbol:'(.)', description:'brief pause'},
-    {id:'sym-pause-timed', symbol:'(0.0)', description:'timed pause'},
-    {id:'sym-overlap-start', symbol:'[', description:'overlap onset'},
-    {id:'sym-overlap-end', symbol:']', description:'overlap offset'},
-    {id:'sym-latching', symbol:'=', description:'latching'}
-  ],
-  activeSymbolRowId: 'sym-pause-brief',
+  symbolRows: XSymbolDefaults.freshRows(),
+  activeSymbolRowId: XSymbolDefaults.activeId,
   symbolEditMode: false,
   talkActionCodes: [
     {id:'talk-question', label:'question'},
@@ -3843,6 +4031,14 @@ const XDom = {
     this.downloadFormattedHelp=this.q('downloadFormattedHelp');
     this.chooseDataFolder=this.q('chooseDataFolder');
     this.reconnectProjectFolder=this.q('reconnectProjectFolder');
+    this.projectFilesRollupTitle=this.q('projectFilesRollupTitle');
+    this.projectFilesRollupToggle=this.q('projectFilesRollupToggle');
+    this.projectFileStatusBlock=this.q('projectFileStatusBlock');
+    this.projectFilePathMode=this.q('projectFilePathMode');
+    this.projectFileStatusList=this.q('projectFileStatusList');
+    this.projectFilePathViewer=this.q('projectFilePathViewer');
+    this.projectFilePathViewerTitle=this.q('projectFilePathViewerTitle');
+    this.projectFilePathViewerValue=this.q('projectFilePathViewerValue');
     this.setupWorkspace=this.q('setupWorkspace');
     this.workspaceSetupMenu=this.q('workspaceSetupMenu');
     this.workspaceSetupName=this.q('workspaceSetupName');
@@ -4260,6 +4456,413 @@ const XUtils = {
   },
   normalizeHeader(s){
     return String(s||'').toLowerCase().trim().replace(/\s+/g,'').replace(/_/g,'').replace(/\//g,'');
+  }
+ };
+
+/* =========================
+   XBus — lightweight application message bus
+   V0.6.197: cross-module notifications without direct mutation.
+========================= */
+const XBus = {
+  listeners:new Map(),
+  pending:new Map(),
+  flushScheduled:false,
+  metrics:{emitted:0,delivered:0,coalesced:0},
+  on(type,handler){
+    if(!type || typeof handler!=='function') return ()=>{};
+    if(!this.listeners.has(type)) this.listeners.set(type,new Set());
+    const set=this.listeners.get(type);
+    set.add(handler);
+    return ()=>this.off(type,handler);
+  },
+  once(type,handler){
+    const off=this.on(type,payload=>{ off(); handler(payload); });
+    return off;
+  },
+  off(type,handler){
+    const set=this.listeners.get(type);
+    if(!set) return;
+    set.delete(handler);
+    if(!set.size) this.listeners.delete(type);
+  },
+  emit(type,payload){
+    this.metrics.emitted++;
+    const set=this.listeners.get(type);
+    if(!set || !set.size) return 0;
+    let delivered=0;
+    Array.from(set).forEach(handler=>{
+      try{ handler(payload); delivered++; }
+      catch(err){ console.error('XBus listener failed for '+type,err); }
+    });
+    this.metrics.delivered+=delivered;
+    return delivered;
+  },
+  emitSoon(type,payload,key){
+    const token=String(type)+'::'+String(key||'default');
+    if(this.pending.has(token)) this.metrics.coalesced++;
+    this.pending.set(token,{type,payload});
+    if(this.flushScheduled) return;
+    this.flushScheduled=true;
+    const flush=()=>{
+      this.flushScheduled=false;
+      const queued=Array.from(this.pending.values());
+      this.pending.clear();
+      queued.forEach(item=>this.emit(item.type,item.payload));
+    };
+    if(typeof queueMicrotask==='function') queueMicrotask(flush);
+    else Promise.resolve().then(flush);
+  },
+  stats(){ return Object.assign({},this.metrics,{listenerTypes:this.listeners.size,pending:this.pending.size}); }
+};
+
+/* =========================
+   XAutosaveCoordinator — coalesces edit-triggered recovery saves
+   Periodic/final folder backups remain immediate.
+========================= */
+const XAutosaveCoordinator = {
+  delayMs:600,
+  timer:null,
+  pendingTask:null,
+  bound:false,
+  metrics:{requested:0,coalesced:0,flushed:0,cancelled:0},
+  request(task){
+    if(typeof task!=='function') return false;
+    this.metrics.requested++;
+    if(this.timer) this.metrics.coalesced++;
+    this.pendingTask=task;
+    if(this.timer) clearTimeout(this.timer);
+    this.timer=setTimeout(()=>this.flush(),this.delayMs);
+    return true;
+  },
+  flush(){
+    if(this.timer){ clearTimeout(this.timer); this.timer=null; }
+    const task=this.pendingTask; this.pendingTask=null;
+    if(!task) return false;
+    this.metrics.flushed++;
+    try{ const result=task(); if(result&&typeof result.catch==='function') result.catch(err=>console.warn('Deferred autosave failed',err)); }
+    catch(err){ console.warn('Deferred autosave failed',err); }
+    return true;
+  },
+  cancel(){
+    if(this.timer){ clearTimeout(this.timer); this.timer=null; }
+    if(this.pendingTask){ this.metrics.cancelled++; this.pendingTask=null; }
+  },
+  hasPending(){ return !!this.pendingTask; },
+  bind(){
+    if(this.bound) return; this.bound=true;
+    window.addEventListener('pagehide',()=>this.flush(),{capture:true});
+    document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') this.flush(); });
+  },
+  stats(){ return Object.assign({},this.metrics,{pending:this.hasPending(),delayMs:this.delayMs}); }
+};
+
+/* =========================
+   XMediaIdentity — primary-media identity rules
+========================= */
+const XMediaIdentity = {
+  normalizeName(name){ return String(name||'').trim().toLowerCase(); },
+  keyForFile(file){
+    if(!file) return '';
+    if(typeof XVideoStore!=='undefined' && typeof XVideoStore.keyForFile==='function') return XVideoStore.keyForFile(file);
+    return [String(file.name||''),Number(file.size)||0,Number(file.lastModified)||0].join('-');
+  },
+  expectedSizeFromKey(key){
+    const match=String(key||'').match(/-(\d+)-(\d+)$/);
+    return match ? Number(match[1])||0 : 0;
+  },
+  matchesExpectedPrimary(file){
+    const incoming=this.normalizeName(file&&file.name);
+    if(!incoming) return false;
+    const expected=this.normalizeName(XState.projectExpectedVideoName);
+    const current=this.normalizeName(XState.videoName);
+    const expectedKey=String(XState.projectExpectedVideoKey||'');
+    const incomingKey=this.keyForFile(file);
+    if(expectedKey && incomingKey){
+      if(incomingKey===expectedKey) return true;
+      const expectedSize=this.expectedSizeFromKey(expectedKey);
+      if(expected && incoming===expected && expectedSize>0 && Number(file.size)===expectedSize) return true;
+      return false;
+    }
+    return !!((expected && incoming===expected) || (current && incoming===current));
+  }
+};
+
+/* =========================
+   XCalibration — waveform calibration state + mathematics
+========================= */
+const XCalibration = {
+  clampOffset(value){
+    const clamped=Math.round(Math.max(-4,Math.min(4,Number(value)||0))*1000)/1000;
+    return Object.is(clamped,-0) ? 0 : clamped;
+  },
+  normalizedPoints(points){
+    const raw=Array.isArray(points) ? points : (Array.isArray(XState.waveformCalibrationPoints)?XState.waveformCalibrationPoints:[]);
+    const cleaned=[];
+    raw.forEach(point=>{
+      const time=Number(point&&point.time), offset=Number(point&&point.offset);
+      if(Number.isFinite(time)&&time>=0&&Number.isFinite(offset)) cleaned.push({time:Math.max(0,time),offset:this.clampOffset(offset)});
+    });
+    cleaned.sort((a,b)=>a.time-b.time);
+    const merged=[];
+    cleaned.forEach(point=>{
+      const last=merged[merged.length-1];
+      if(last && Math.abs(last.time-point.time)<0.25){ last.time=point.time; last.offset=point.offset; }
+      else merged.push(point);
+    });
+    return merged;
+  },
+  driftOffsetAt(videoTime,points){
+    const list=this.normalizedPoints(points);
+    if(!list.length) return 0;
+    const t=Math.max(0,Number(videoTime)||0), first=list[0];
+    if(t<=first.time) return first.time<=0.001 ? first.offset : first.offset*(t/first.time);
+    for(let i=1;i<list.length;i++){
+      const prev=list[i-1], next=list[i];
+      if(t<=next.time){
+        const span=Math.max(0.001,next.time-prev.time), ratio=(t-prev.time)/span;
+        return prev.offset+(next.offset-prev.offset)*ratio;
+      }
+    }
+    return list[list.length-1].offset;
+  },
+  savedOffsetAt(videoTime){ return (Number(XState.waveformAbsoluteOffsetSeconds)||0)+this.driftOffsetAt(videoTime); },
+  effectiveOffsetAt(videoTime){ return (Number(XState.waveformOffsetSeconds)||0)+this.savedOffsetAt(videoTime); },
+  hasSaved(){ return Math.abs(Number(XState.waveformAbsoluteOffsetSeconds)||0)>0.001 || this.normalizedPoints().length>0; },
+  hasAlignmentState(){
+    return Math.abs(Number(XState.waveformOffsetSeconds)||0)>0.001 || this.hasSaved() || Math.abs(Number(XState.waveformDriftAnchorOffset)||0)>0.001;
+  },
+  pointArraysMatch(a,b){
+    const left=Array.isArray(a)?a:[], right=Array.isArray(b)?b:[];
+    return left.length===right.length && left.every((point,index)=>{
+      const other=right[index]||{};
+      return Math.abs((Number(point.time)||0)-(Number(other.time)||0))<0.0005 && Math.abs((Number(point.offset)||0)-(Number(other.offset)||0))<0.0005;
+    });
+  },
+  canUndoLastPoint(){
+    const undo=XState.waveformLastPointUndo;
+    return !!(undo && this.pointArraysMatch(this.normalizedPoints(),undo.afterPoints));
+  },
+  notify(source,options){
+    options=options||{};
+    if(options.emit===false) return;
+    XBus.emitSoon('waveform:calibration-changed',{source:source||'calibration',autosave:options.autosave!==false},'calibration');
+  },
+  resetAll(options){
+    options=options||{};
+    XState.waveformOffsetSeconds=0;
+    XState.waveformAbsoluteOffsetSeconds=0;
+    XState.waveformCalibrationPoints=[];
+    XState.waveformLastPointUndo=null;
+    XState.waveformDriftAnchorTime=0;
+    XState.waveformDriftAnchorOffset=0;
+    this.notify(options.source||'reset',options);
+  },
+  commitAbsoluteFromManual(options){
+    const offset=this.clampOffset(XState.waveformOffsetSeconds||0);
+    XState.waveformAbsoluteOffsetSeconds=offset;
+    XState.waveformOffsetSeconds=0;
+    XState.waveformLastPointUndo=null;
+    this.notify((options&&options.source)||'absolute',options);
+    return offset;
+  },
+  addPointAt(current,manual,options){
+    current=Math.max(0,Number(current)||0); manual=this.clampOffset(manual);
+    const nextResidual=this.clampOffset(this.driftOffsetAt(current)+manual);
+    const beforePoints=this.normalizedPoints().map(p=>({time:p.time,offset:p.offset}));
+    const points=beforePoints.filter(p=>Math.abs(p.time-current)>=0.25);
+    points.push({time:current,offset:nextResidual}); points.sort((a,b)=>a.time-b.time);
+    XState.waveformCalibrationPoints=points;
+    XState.waveformLastPointUndo={beforePoints:beforePoints.map(p=>({...p})),afterPoints:points.map(p=>({...p})),manualOffset:manual,pointTime:current};
+    XState.waveformOffsetSeconds=0;
+    XState.waveformDriftAnchorTime=0; XState.waveformDriftAnchorOffset=0;
+    this.notify((options&&options.source)||'point',options);
+    return {time:current,offset:nextResidual,points};
+  },
+  undoLastPoint(options){
+    const undo=XState.waveformLastPointUndo;
+    if(!undo || !this.canUndoLastPoint()){ XState.waveformLastPointUndo=null; return {ok:false}; }
+    XState.waveformCalibrationPoints=(undo.beforePoints||[]).map(p=>({time:Number(p.time)||0,offset:this.clampOffset(p.offset)}));
+    XState.waveformOffsetSeconds=this.clampOffset(undo.manualOffset);
+    XState.waveformLastPointUndo=null;
+    this.notify((options&&options.source)||'undo-point',options);
+    return {ok:true,points:this.normalizedPoints(),manual:XState.waveformOffsetSeconds};
+  },
+  extractFromProject(data){
+    if(!data || Array.isArray(data) || typeof data!=='object') return null;
+    const nested=data.absoluteOffset!==undefined || data.points!==undefined || data.temporaryOffset!==undefined;
+    const hasAbs=nested ? Number.isFinite(Number(data.absoluteOffset)) : (typeof data.waveformAbsoluteOffsetSeconds==='number'&&Number.isFinite(data.waveformAbsoluteOffsetSeconds));
+    const hasPoints=nested ? Array.isArray(data.points) : Array.isArray(data.waveformCalibrationPoints);
+    const hasAnchor=!nested && typeof data.waveformDriftAnchorTime==='number'&&Number.isFinite(data.waveformDriftAnchorTime)&&typeof data.waveformDriftAnchorOffset==='number'&&Number.isFinite(data.waveformDriftAnchorOffset);
+    const hasLegacyOffset=!nested && typeof data.waveformOffsetSeconds==='number'&&Number.isFinite(data.waveformOffsetSeconds);
+    if(!hasAbs&&!hasPoints&&!hasAnchor&&!hasLegacyOffset) return null;
+    let absoluteOffset=hasAbs ? this.clampOffset(nested?data.absoluteOffset:data.waveformAbsoluteOffsetSeconds) : 0;
+    let points=hasPoints ? this.normalizedPoints(nested?data.points:data.waveformCalibrationPoints) : [];
+    let migratedLegacyOffset=false,migratedLegacyAnchor=false;
+    if(!points.length&&hasAnchor&&Math.abs(Number(data.waveformDriftAnchorOffset)||0)>0.0005){
+      points=this.normalizedPoints([{time:Math.max(0,Number(data.waveformDriftAnchorTime)||0),offset:this.clampOffset(data.waveformDriftAnchorOffset)}]);
+      migratedLegacyAnchor=true;
+    }
+    if(!nested&&!hasAbs&&!hasPoints&&hasLegacyOffset){ absoluteOffset=this.clampOffset(data.waveformOffsetSeconds); migratedLegacyOffset=true; }
+    return {absoluteOffset,points,migratedLegacyOffset,migratedLegacyAnchor,temporaryOffset:nested?this.clampOffset(data.temporaryOffset||0):this.clampOffset(data.waveformOffsetSeconds||0)};
+  },
+  restore(data,options){
+    options=options||{};
+    const recovered=this.extractFromProject(data);
+    if(!recovered) return null;
+    XState.waveformAbsoluteOffsetSeconds=this.clampOffset(recovered.absoluteOffset);
+    XState.waveformCalibrationPoints=this.normalizedPoints(recovered.points);
+    XState.waveformOffsetSeconds=options.resetManual ? 0 : this.clampOffset(recovered.temporaryOffset||0);
+    XState.waveformLastPointUndo=null;
+    XState.waveformDriftAnchorTime=0; XState.waveformDriftAnchorOffset=0;
+    this.notify(options.source||'restore',options);
+    return recovered;
+  },
+  clearSaved(options){
+    XState.waveformAbsoluteOffsetSeconds=0; XState.waveformCalibrationPoints=[]; XState.waveformLastPointUndo=null;
+    XState.waveformDriftAnchorTime=0; XState.waveformDriftAnchorOffset=0;
+    this.notify((options&&options.source)||'clear',options);
+  },
+  snapshot(){
+    return {temporaryOffset:this.clampOffset(XState.waveformOffsetSeconds||0),absoluteOffset:this.clampOffset(XState.waveformAbsoluteOffsetSeconds||0),points:this.normalizedPoints(),version:1};
+  },
+  serializeLegacy(){
+    return {waveformOffsetSeconds:this.clampOffset(XState.waveformOffsetSeconds||0),waveformAbsoluteOffsetSeconds:this.clampOffset(XState.waveformAbsoluteOffsetSeconds||0),waveformCalibrationPoints:this.normalizedPoints(),waveformDriftAnchorTime:0,waveformDriftAnchorOffset:0};
+  },
+  summary(){
+    const abs=Number(XState.waveformAbsoluteOffsetSeconds)||0, points=this.normalizedPoints();
+    return 'Abs '+(abs>=0?'+':'')+abs.toFixed(1)+'s; '+(points.length?points.length+' Pt'+(points.length===1?'':'s'):'0 Pts');
+  }
+};
+
+/* =========================
+   XTranscriptHierarchy — one authority for parent/child tier rules
+========================= */
+const XTranscriptHierarchy = {
+  plain(value){ return XUtils.stripHtml(String(value||'')).replace(/\u00a0/g,' '); },
+  isComment(row){ return !!(row && (row.rowType==='comment' || String(row.speaker||'').trim().toLowerCase()==='cmt')); },
+  isChild(row){ return !!(row && (row.lineRole==='child' || row.childTier || row.childLine)); },
+  marker(row,options){
+    options=options||{};
+    if(!options.childMode) return '';
+    const t=this.plain(row&&row.transcript||'').trimStart();
+    if(t.indexOf('((')===0) return 'child';
+    if(t.indexOf('(')===0) return 'parent';
+    return '';
+  },
+  hasSpeaker(row){ return !!this.plain(row&&row.speaker||'').trim(); },
+  isParent(row,options){ return !!(row && !this.isComment(row) && !this.isChild(row) && (this.hasSpeaker(row)||this.marker(row,options)==='parent')); },
+  childRows(parentId,rows){ return (rows||XState.rows||[]).filter(row=>row&&!this.isComment(row)&&this.isChild(row)&&row.parentRowId===parentId); },
+  parentFor(row,rows){ return row&&row.parentRowId ? (rows||XState.rows||[]).find(candidate=>candidate&&candidate.id===row.parentRowId)||null : null; },
+  shouldHide(row,rows){ const parent=this.parentFor(row,rows); return !!(this.isChild(row)&&parent&&parent.childTiersCollapsed); },
+  clearTag(row){ if(!row)return; row.lineRole='parent'; row.parentRowId=''; row.childTier=null; row.childLine=null; },
+  inheritTiming(row,parent){
+    let changed=false; const nextStart=parent.start||'', nextEnd=parent.end||'';
+    if(row.start!==nextStart){row.start=nextStart;changed=true;} if(row.end!==nextEnd){row.end=nextEnd;changed=true;}
+    const a=XUtils.parseTime(row.start),b=XUtils.parseTime(row.end);
+    const dur=(Number.isFinite(a)&&Number.isFinite(b)&&b>=a)?XUtils.formatDurationValue(b-a):'';
+    if(row.duration!==dur){row.duration=dur;changed=true;} return changed;
+  },
+  tagChild(row,parent,options){
+    options=options||{}; if(!row||!parent||!this.hasSpeaker(parent)) return false;
+    let timingChanged=false; if(options.forceParentTimecodes) timingChanged=this.inheritTiming(row,parent);
+    const source=options.source||((this.marker(row,{childMode:!!options.childMode})==='child')?'transcript-double-paren':'italic-speaker');
+    row.lineRole='child'; row.parentRowId=parent.id;
+    row.childTier={enabled:true,source,parentRowId:parent.id,parentSpeaker:this.plain(parent.speaker||'').trim(),speakerText:this.plain(row.speaker||'').trim(),inheritedStart:row.start||'',inheritedEnd:row.end||'',forcedTimecodes:!!options.forceParentTimecodes};
+    row.childLine=null; if(typeof parent.childTiersCollapsed!=='boolean') parent.childTiersCollapsed=false;
+    return timingChanged;
+  },
+  retag(rows,options){
+    rows=Array.isArray(rows)?rows:[]; options=options||{};
+    let previousParent=null; const timingChangedIds=[]; const structureChangedIds=[];
+    rows.forEach(row=>{
+      if(!row || (options.isComment?options.isComment(row):this.isComment(row))) return;
+      const wasChild=this.isChild(row), oldParent=row.parentRowId||'';
+      const marker=this.marker(row,{childMode:!!options.childMode});
+      const italic=!!(options.speakerHasItalic&&options.speakerHasItalic(row.speaker||''));
+      const shouldBeChild=!!(previousParent && (marker==='child' || (marker!=='parent' && options.childMode && italic)));
+      if(shouldBeChild){
+        if(this.tagChild(row,previousParent,{childMode:!!options.childMode,forceParentTimecodes:!!options.forceParentTimecodes,source:marker==='child'?'transcript-double-paren':'italic-speaker'})) timingChangedIds.push(row.id);
+      }else{
+        this.clearTag(row);
+        if(marker==='parent'||this.hasSpeaker(row)) previousParent=row;
+      }
+      if(wasChild!==this.isChild(row) || oldParent!==(row.parentRowId||'')) structureChangedIds.push(row.id);
+    });
+    return {timingChangedIds,structureChangedIds};
+  },
+  snapshotSettings(){ return {childSpeakerMode:!!XState.childSpeakerMode,forceParentTimecodes:!!XState.forceParentTimecodes,removeChildTierNumbers:!!XState.removeChildTierNumbers,addChildTierAbc:!!XState.addChildTierAbc,version:1}; },
+  serializeLegacy(){ return {childSpeakerMode:!!XState.childSpeakerMode,childTierMode:!!XState.childSpeakerMode,forceParentTimecodes:!!XState.forceParentTimecodes,removeChildTierNumbers:!!XState.removeChildTierNumbers,addChildTierAbc:!!XState.addChildTierAbc}; },
+  restoreSettings(data,options){
+    data=data||{}; options=options||{};
+    XState.childSpeakerMode=(typeof data.childSpeakerMode==='boolean')?data.childSpeakerMode:((typeof data.childTierMode==='boolean')?data.childTierMode:false);
+    XState.forceParentTimecodes=(typeof data.forceParentTimecodes==='boolean')?data.forceParentTimecodes:false;
+    XState.removeChildTierNumbers=!!data.removeChildTierNumbers; XState.addChildTierAbc=!!data.addChildTierAbc;
+    if(options.emit!==false) XBus.emitSoon('transcript:hierarchy-settings-changed',{source:options.source||'restore'},'hierarchy-settings');
+    return this.snapshotSettings();
+  }
+};
+
+/* =========================
+   XProjectState — extensible project-state adapters
+========================= */
+const XProjectState = {
+  adapters:new Map(),
+  register(name,adapter){ if(name&&adapter) this.adapters.set(name,adapter); return adapter; },
+  capture(){ return this.captureBundle().moduleState; },
+  captureBundle(){
+    const moduleState={schemaVersion:1}, legacy={};
+    this.adapters.forEach((adapter,name)=>{
+      try{
+        const saved=(typeof adapter.save==='function') ? adapter.save() : undefined;
+        if(saved!==undefined) moduleState[name]=saved;
+        if(typeof adapter.legacySave==='function') Object.assign(legacy,adapter.legacySave(saved));
+      }catch(err){ console.warn('Project-state save failed for '+name,err); }
+    });
+    return {moduleState,legacy};
+  },
+  restore(data,context){
+    const moduleState=(data&&data.moduleState&&typeof data.moduleState==='object')?data.moduleState:null;
+    this.adapters.forEach((adapter,name)=>{
+      try{ if(typeof adapter.load==='function') adapter.load(moduleState&&moduleState[name]!==undefined?moduleState[name]:data,context||{}); }
+      catch(err){ console.warn('Project-state restore failed for '+name,err); }
+    });
+  },
+  legacyPayload(){ return this.captureBundle().legacy; }
+};
+XProjectState.register('calibration',{save:()=>XCalibration.snapshot(),legacySave:()=>XCalibration.serializeLegacy(),load:(data,ctx)=>XCalibration.restore(data,{emit:false,resetManual:false,source:(ctx&&ctx.source)||'project-load'})});
+XProjectState.register('transcriptHierarchy',{save:()=>XTranscriptHierarchy.snapshotSettings(),legacySave:()=>XTranscriptHierarchy.serializeLegacy(),load:(data,ctx)=>XTranscriptHierarchy.restoreSettings(data,{emit:false,source:(ctx&&ctx.source)||'project-load'})});
+
+/* =========================
+   XCoreMessages — application-level subscriptions
+========================= */
+const XCoreMessages = {
+  bound:false,
+  bind(){
+    if(this.bound) return; this.bound=true;
+    XAutosaveCoordinator.bind();
+    XBus.on('media:v1-attached',payload=>{
+      if(!payload||!payload.blob) return;
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.markMediaLoaded('v1',payload.blob,payload.name,payload.statusMessage);
+      if(typeof XWaveform!=='undefined') XWaveform.build(payload.blob,'video');
+      if(typeof XVideoPopout!=='undefined') XVideoPopout.syncSoon();
+    });
+    XBus.on('waveform:calibration-changed',payload=>{
+      if(typeof XWaveform!=='undefined'){
+        XWaveform.updateOffsetLabel();
+        requestAnimationFrame(()=>{ try{XWaveform.draw();}catch(err){} });
+      }
+      if((!payload||payload.autosave!==false) && typeof XFiles!=='undefined') XFiles.autosave();
+    });
+    XBus.on('transcript:hierarchy-changed',payload=>{
+      if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true});
+    });
+    XBus.on('project:loaded',payload=>{
+      if(typeof XVideo!=='undefined'&&typeof XVideo.ensureVideoAdjustmentState==='function'){
+        XVideo.ensureVideoAdjustmentState();
+        XVideo.applyVideoDisplayAdjustments();
+      }
+      if(typeof XTranscriptPopout!=='undefined') XTranscriptPopout.syncSoon({forceRender:true});
+    });
   }
 };
 
@@ -7387,34 +7990,13 @@ const XTranscript = {
 (function(){
   if(typeof XTranscript === 'undefined' || typeof XState === 'undefined') return;
 
-  function plain(value){
-    const div=document.createElement('div');
-    div.innerHTML=String(value||'');
-    return (div.textContent||div.innerText||'').replace(/\u00a0/g,' ');
-  }
-  function markerForTranscript(row){
-    // Parentheses are tier markers only when CA → Child tiers is explicitly enabled.
-    // With Child tiers off they remain ordinary transcript text and must not alter timing.
-    if(!XState.childSpeakerMode) return '';
-    const t=plain(row && row.transcript || '').trimStart();
-    if(t.indexOf('((')===0) return 'child';
-    if(t.indexOf('(')===0) return 'parent';
-    return '';
-  }
-  function hasSpeaker(row){
-    const fn=(typeof XTranscript.hasSpeakerText === 'function') ? XTranscript.hasSpeakerText.bind(XTranscript) : null;
-    if(fn) return !!fn(row);
-    return !!plain(row && row.speaker || '').trim();
-  }
-  function isChild(row){ return !!(row && XTranscript.isChildTierRow && XTranscript.isChildTierRow(row)); }
+  function plain(value){ return XTranscriptHierarchy.plain(value); }
+  function markerForTranscript(row){ return XTranscriptHierarchy.marker(row,{childMode:!!XState.childSpeakerMode}); }
+  function hasSpeaker(row){ return XTranscriptHierarchy.hasSpeaker(row); }
+  function isChild(row){ return XTranscriptHierarchy.isChild(row); }
   function asRows(){ return Array.isArray(XState.rows) ? XState.rows : []; }
-  function isParentTier(row){
-    return !!(row && !XTranscript.isCommentRow(row) && !isChild(row) && (hasSpeaker(row) || markerForTranscript(row)==='parent'));
-  }
-  function childRows(parentId, sourceRows){
-    sourceRows=sourceRows || asRows();
-    return sourceRows.filter(row=>row && !XTranscript.isCommentRow(row) && isChild(row) && row.parentRowId===parentId);
-  }
+  function isParentTier(row){ return XTranscriptHierarchy.isParent(row,{childMode:!!XState.childSpeakerMode}); }
+  function childRows(parentId, sourceRows){ return XTranscriptHierarchy.childRows(parentId,sourceRows||asRows()); }
   function blockRowsForParent(parent, sourceRows){
     return parent ? [parent].concat(childRows(parent.id, sourceRows)) : [];
   }
@@ -7431,59 +8013,31 @@ const XTranscript = {
   XTranscript.isTranscriptParentTierMarker=function(row){ return markerForTranscript(row)==='parent'; };
   XTranscript.isParentTierRow=function(row){ return isParentTier(row); };
 
-  const previousTagChildLine=XTranscript.tagChildLine ? XTranscript.tagChildLine.bind(XTranscript) : null;
+  XTranscript.transcriptTierMarker=markerForTranscript;
+  XTranscript.isChildTierRow=function(row){ return XTranscriptHierarchy.isChild(row); };
+  XTranscript.isTranscriptChildTierMarker=function(row){ return markerForTranscript(row)==='child'; };
+  XTranscript.isTranscriptParentTierMarker=function(row){ return markerForTranscript(row)==='parent'; };
+  XTranscript.isParentTierRow=function(row){ return isParentTier(row); };
+  XTranscript.childTierRowsForParent=function(parentId){ return XTranscriptHierarchy.childRows(parentId,asRows()); };
+  XTranscript.parentForChildTier=function(row){ return XTranscriptHierarchy.parentFor(row,asRows()); };
+  XTranscript.shouldHideChildTierRow=function(row){ return XTranscriptHierarchy.shouldHide(row,asRows()); };
+
   XTranscript.tagChildLine=function(row,parent){
-    let changed=false;
-    if(previousTagChildLine){
-      changed=!!previousTagChildLine(row,parent);
-    }else if(row && parent){
-      if(XState.forceParentTimecodes){
-        const nextStart=parent.start||'';
-        const nextEnd=parent.end||'';
-        if(row.start!==nextStart){ row.start=nextStart; changed=true; }
-        if(row.end!==nextEnd){ row.end=nextEnd; changed=true; }
-        const startSeconds=XUtils.parseTime(row.start);
-        const endSeconds=XUtils.parseTime(row.end);
-        const nextDuration=(Number.isFinite(startSeconds) && Number.isFinite(endSeconds) && endSeconds>=startSeconds) ? XUtils.formatDurationValue(endSeconds-startSeconds) : '';
-        if(row.duration!==nextDuration){ row.duration=nextDuration; changed=true; }
-      }
-      row.lineRole='child';
-      row.parentRowId=parent.id;
-      row.childTier={enabled:true,parentRowId:parent.id};
-      row.childLine=null;
-    }
-    if(row && parent){
-      row.lineRole='child';
-      row.parentRowId=parent.id;
-      row.childTier=row.childTier || {enabled:true,parentRowId:parent.id};
-      row.childTier.source=(markerForTranscript(row)==='child') ? 'transcript-double-paren' : (row.childTier.source || 'italic-speaker');
-      row.childTier.parentRowId=parent.id;
-      row.childTier.parentSpeaker=plain(parent.speaker||'').trim();
-      row.childTier.speakerText=plain(row.speaker||'').trim();
-      row.childLine=null;
-      if(typeof parent.childTiersCollapsed !== 'boolean') parent.childTiersCollapsed=false;
-    }
-    return changed;
+    return XTranscriptHierarchy.tagChild(row,parent,{childMode:!!XState.childSpeakerMode,forceParentTimecodes:!!XState.forceParentTimecodes,source:markerForTranscript(row)==='child'?'transcript-double-paren':'italic-speaker'});
   };
 
   XTranscript.retagChildLines=function(){
-    let previousParent=null;
-    const timingChangedIds=[];
-    (XState.rows||[]).forEach(row=>{
-      if(!row || this.isCommentRow(row)) return;
-      const marker=markerForTranscript(row);
-      const hasItalic=!!this.speakerHasItalic(row.speaker||'');
-      const shouldBeChild=!!(previousParent && (marker==='child' || (marker!== 'parent' && XState.childSpeakerMode && hasItalic)));
-      if(shouldBeChild){
-        if(this.tagChildLine(row,previousParent)) timingChangedIds.push(row.id);
-        if(row.childTier) row.childTier.source=(marker==='child') ? 'transcript-double-paren' : 'italic-speaker';
-      }else{
-        this.clearChildTag(row);
-        if(marker==='parent' || hasSpeaker(row)) previousParent=row;
-      }
+    const result=XTranscriptHierarchy.retag(asRows(),{
+      childMode:!!XState.childSpeakerMode,
+      forceParentTimecodes:!!XState.forceParentTimecodes,
+      speakerHasItalic:value=>this.speakerHasItalic(value||''),
+      isComment:row=>this.isCommentRow(row)
     });
-    timingChangedIds.forEach(id=>this.refreshRowTimingFields(id));
-    return timingChangedIds;
+    result.timingChangedIds.forEach(id=>this.refreshRowTimingFields(id));
+    if(result.structureChangedIds.length || result.timingChangedIds.length){
+      XBus.emitSoon('transcript:hierarchy-changed',{structureChangedIds:result.structureChangedIds,timingChangedIds:result.timingChangedIds},'hierarchy');
+    }
+    return result.timingChangedIds;
   };
 
   XTranscript.childTierChunksForSort=function(){
@@ -7923,6 +8477,34 @@ const XSymbols = {
     }).filter(row=>row.type==='section' || row.symbol || row.description);
   },
 
+  projectSnapshot(){
+    return {
+      symbolRows:this.serializeRows(XState.symbolRows),
+      activeSymbolRowId:XState.activeSymbolRowId||'',
+      symbolEditMode:!!XState.symbolEditMode,
+      version:1
+    };
+  },
+
+  restoreProjectState(data,options){
+    options=options||{};
+    const source=(data&&Array.isArray(data.symbolRows)) ? data.symbolRows : [];
+    const resolved=XSymbolDefaults.resolveProjectRows(source);
+    XState.symbolRows=this.serializeRows(resolved.rows);
+    const requestedActive=data&&data.activeSymbolRowId ? String(data.activeSymbolRowId) : '';
+    XState.activeSymbolRowId=(!resolved.migrated && requestedActive && XState.symbolRows.some(row=>row.id===requestedActive))
+      ? requestedActive
+      : (XState.symbolRows.some(row=>row.id===XSymbolDefaults.activeId) ? XSymbolDefaults.activeId : (XState.symbolRows[0]&&XState.symbolRows[0].id)||'');
+    XState.symbolEditMode=!!(data&&data.symbolEditMode);
+    this.render();
+    if(resolved.migrated && options.status!==false){
+      XStatus.set(resolved.reason==='legacy-default'
+        ? 'Updated older built-in Symbols palette to the current Gravar default.'
+        : 'Loaded current Gravar default Symbols palette.');
+    }
+    return {migrated:resolved.migrated,reason:resolved.reason,count:XState.symbolRows.length};
+  },
+
   symbolSetPayload(){
     return {
       app:'Gravar',
@@ -8077,6 +8659,13 @@ const XSymbols = {
     };
   }
 };
+
+// V0.6.198: Symbols own their project persistence and legacy-default migration.
+XProjectState.register('symbols',{
+  save:()=>XSymbols.projectSnapshot(),
+  legacySave:saved=>({symbolRows:saved.symbolRows,activeSymbolRowId:saved.activeSymbolRowId,symbolEditMode:saved.symbolEditMode}),
+  load:(data,ctx)=>XSymbols.restoreProjectState(data,{source:(ctx&&ctx.source)||'project-load',status:false})
+});
 
 /* =========================
    XTalkActionPalette
@@ -10089,39 +10678,9 @@ function showVideoLoadHelp(file){
 }
 
 const XVideo = {
-  normalizedPrimaryVideoName(name){
-    return String(name||'').trim().toLowerCase();
-  },
-  manualLoadMatchesProjectVideo(file){
-    const incoming=this.normalizedPrimaryVideoName(file && file.name);
-    if(!incoming) return false;
-    const expected=this.normalizedPrimaryVideoName(XState.projectExpectedVideoName);
-    const current=this.normalizedPrimaryVideoName(XState.videoName);
-    const expectedKey=String(XState.projectExpectedVideoKey||'');
-    const incomingKey=(typeof XVideoStore !== 'undefined' && typeof XVideoStore.keyForFile === 'function') ? XVideoStore.keyForFile(file) : '';
-
-    // Newer projects normally have the IndexedDB recovery key, which contains
-    // filename + byte size + lastModified. Prefer that identity. A copied file
-    // can acquire a different lastModified timestamp, so exact filename + byte
-    // size is accepted as the same media when the saved key provides that size.
-    if(expectedKey && incomingKey){
-      if(incomingKey===expectedKey) return true;
-      const keyTail=expectedKey.match(/-(\d+)-(\d+)$/);
-      const expectedSize=keyTail ? Number(keyTail[1]) : 0;
-      if(expected && incoming===expected && expectedSize>0 && Number(file.size)===expectedSize) return true;
-      return false;
-    }
-
-    // Older projects may have only a filename. In that case use the saved name,
-    // or the currently attached V1 name when the user is simply reloading it.
-    return !!((expected && incoming===expected) || (current && incoming===current));
-  },
-  hasWaveformAlignmentState(){
-    return Math.abs(Number(XState.waveformOffsetSeconds)||0)>0.001 ||
-      Math.abs(Number(XState.waveformAbsoluteOffsetSeconds)||0)>0.001 ||
-      (Array.isArray(XState.waveformCalibrationPoints) && XState.waveformCalibrationPoints.length>0) ||
-      Math.abs(Number(XState.waveformDriftAnchorOffset)||0)>0.001;
-  },
+  normalizedPrimaryVideoName(name){ return XMediaIdentity.normalizeName(name); },
+  manualLoadMatchesProjectVideo(file){ return XMediaIdentity.matchesExpectedPrimary(file); },
+  hasWaveformAlignmentState(){ return XCalibration.hasAlignmentState(); },
   attachBlob(blob,name,type,key,statusMessage){
     if(!blob) return;
 
@@ -10150,10 +10709,10 @@ const XVideo = {
       XVideo.applyVideoDisplayAdjustments();
       XVideo.updateDualVideoLayout();
       XStatus.set(statusMessage||('Video loaded: '+XState.videoName));
-      XWaveform.build(blob,'video');
-      if(typeof XVideoPopout!=='undefined') XVideoPopout.syncSoon();
+      XBus.emit('media:v1-attached',{blob,name:XState.videoName,type:XState.videoType,key:XState.videoKey,statusMessage:statusMessage||'',projectRestore:!!XState.lastVideoAttachWasProjectRestore});
     }catch(err){
       console.error(err);
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.set('v1',{name:String(name||''),path:String(name||''),status:'failed',detail:'Video attach failed',scope:'name-only'});
       XStatus.set('Video load failed.');
       alert('Could not load video.');
     }
@@ -10439,9 +10998,11 @@ const XVideo = {
       this.applyVideoDisplayAdjustments();
       this.syncSecondaryToPrimary(true);
       XStatus.set(statusMessage||('Secondary video loaded: '+XState.secondaryVideoName));
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.markMediaLoaded('v2',blob,XState.secondaryVideoName,statusMessage);
       XFiles.autosave();
     }catch(err){
       console.error(err);
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.set('v2',{name:String(name||''),path:String(name||''),status:'failed',detail:'Secondary video attach failed',scope:'name-only'});
       XStatus.set('Secondary video load failed.');
       alert('Could not load secondary video.');
     }
@@ -10449,6 +11010,7 @@ const XVideo = {
 
   async loadSecondary(file){
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('v2',file,'loading','Loading secondary video');
     try{
       const compatibility = describeVideoCompatibility(file);
       XStatus.set('Secondary video: '+compatibility.message);
@@ -10476,6 +11038,7 @@ const XVideo = {
   async load(file){
     if(typeof this.stopSegmentPlayback === 'function') this.stopSegmentPlayback();
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('v1',file,'loading','Loading primary video');
 
     try{
       const compatibility = describeVideoCompatibility(file);
@@ -10545,15 +11108,18 @@ const XVideo = {
         requestAnimationFrame(()=>XWaveform.draw());
       }
       XStatus.set(statusMessage||('External audio loaded: '+XState.audioName));
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.markMediaLoaded('audio',blob,XState.audioName,statusMessage);
       if(!(options && options.noAutosave)) XFiles.autosave();
     }catch(err){
       console.error(err);
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.set('audio',{name:String(name||''),path:String(name||''),status:'failed',detail:'External audio attach failed',scope:'name-only'});
       XStatus.set('External audio load failed.');
       alert('Could not load WAV/audio file.');
     }
   },
   async loadAudio(file){
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('audio',file,'loading','Loading external audio');
     try{
       this.attachAudioBlob(
         file,
@@ -10792,6 +11358,24 @@ const XVideo = {
       };
       document.addEventListener('pointerdown',close,true);
     },0);
+  },
+
+  isMacPlatform(){
+    try{
+      const platform=String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '');
+      return /Mac|iPhone|iPad|iPod/i.test(platform);
+    }catch(err){
+      return true;
+    }
+  },
+
+  playSpeedModifierActive(event){
+    if(!event) return false;
+    return this.isMacPlatform() ? !!event.metaKey : !!event.ctrlKey;
+  },
+
+  setPlaySpeedModifierCursor(active){
+    if(XDom.playBtn) XDom.playBtn.classList.toggle('play-speed-modifier',!!active);
   },
 
   selectPlaybackSpeedFromClick(event){
@@ -11898,6 +12482,9 @@ const XVideo = {
       this.togglePlay();
     };
     if(XDom.playBtn){
+      XDom.playBtn.addEventListener('pointerenter',e=>this.setPlaySpeedModifierCursor(this.playSpeedModifierActive(e)));
+      XDom.playBtn.addEventListener('pointermove',e=>this.setPlaySpeedModifierCursor(this.playSpeedModifierActive(e)));
+      XDom.playBtn.addEventListener('pointerleave',()=>this.setPlaySpeedModifierCursor(false));
       XDom.playBtn.addEventListener('pointerdown',e=>this.beginPlaySpeedDrag(e));
       XDom.playBtn.addEventListener('pointermove',e=>this.movePlaySpeedDrag(e));
       XDom.playBtn.addEventListener('pointerup',e=>this.endPlaySpeedDrag(e));
@@ -11908,8 +12495,10 @@ const XVideo = {
     XDom.frameBack.onclick=()=>this.frameShift(-1);
     XDom.frameFwd.onclick=()=>this.frameShift(1);
 
-    window.addEventListener('blur',()=>{this.stopRepeat();this.closeSpeedMenu();this.closeFrameClipMenu();});
+    window.addEventListener('blur',()=>{this.stopRepeat();this.closeSpeedMenu();this.closeFrameClipMenu();this.setPlaySpeedModifierCursor(false);});
     document.addEventListener('keydown',event=>{
+      const speedModifierKey=this.isMacPlatform() ? 'Meta' : 'Control';
+      if(event.key===speedModifierKey) this.setPlaySpeedModifierCursor(true);
       if(event.key==='Escape'){
         XVideo.closeSpeedMenu();
         XVideo.closeFrameClipMenu();
@@ -11920,6 +12509,10 @@ const XVideo = {
           XVideo.pausePlayback('Transcript repeat stopped.');
         }
       }
+    },true);
+    document.addEventListener('keyup',event=>{
+      const speedModifierKey=this.isMacPlatform() ? 'Meta' : 'Control';
+      if(event.key===speedModifierKey) this.setPlaySpeedModifierCursor(false);
     },true);
 
     if(XDom.jumpBack4) XDom.jumpBack4.onclick=()=>this.seekBy(-4);
@@ -12022,15 +12615,9 @@ const XWaveform = {
     this.ensureDragTimeLabel();
   },
   resetCalibration(options){
-    XState.waveformOffsetSeconds=0;
-    XState.waveformAbsoluteOffsetSeconds=0;
-    XState.waveformCalibrationPoints=[];
-    XState.waveformDriftAnchorTime=0;
-    XState.waveformDriftAnchorOffset=0;
-    if(!(options && options.keepDisplay)){
-      this.updateOffsetLabel();
-      this.draw();
-    }
+    options=options||{};
+    XCalibration.resetAll({source:'media-reset',emit:!options.keepDisplay,autosave:false});
+    if(options.keepDisplay) return;
   },
   frameNudgeSeconds(){
     const video=XDom.video;
@@ -12602,252 +13189,61 @@ const XWaveform = {
   },
 
 
-  clampCalibrationOffset(value){
-    const clamped=Math.round(Math.max(-4,Math.min(4,Number(value)||0))*1000)/1000;
-    return Object.is(clamped,-0) ? 0 : clamped;
-  },
-
-  normalizedCalibrationPoints(){
-    const raw=Array.isArray(XState.waveformCalibrationPoints) ? XState.waveformCalibrationPoints : [];
-    const cleaned=[];
-    raw.forEach(point=>{
-      const time=Number(point && point.time);
-      const offset=Number(point && point.offset);
-      if(Number.isFinite(time) && time>=0 && Number.isFinite(offset)){
-        cleaned.push({time:Math.max(0,time), offset:this.clampCalibrationOffset(offset)});
-      }
-    });
-    cleaned.sort((a,b)=>a.time-b.time);
-
-    // Collapse points that are effectively at the same time, keeping the most
-    // recent value from the array after sorting by replacing the prior point.
-    const merged=[];
-    cleaned.forEach(point=>{
-      const last=merged[merged.length-1];
-      if(last && Math.abs(last.time-point.time)<0.25){
-        last.time=point.time;
-        last.offset=point.offset;
-      }else{
-        merged.push(point);
-      }
-    });
-    return merged;
-  },
-
-  driftOffsetAt(videoTime){
-    const points=this.normalizedCalibrationPoints();
-    if(!points.length) return 0;
-
-    const t=Math.max(0,Number(videoTime)||0);
-    const first=points[0];
-
-    // The saved absolute offset handles the beginning sync problem. Drift
-    // correction is modeled as residual offset over time. Unless the user adds
-    // an explicit near-zero calibration point, residual drift starts at 0.0 sec.
-    if(t<=first.time){
-      if(first.time<=0.001) return first.offset;
-      return first.offset * (t/first.time);
-    }
-
-    for(let i=1;i<points.length;i++){
-      const prev=points[i-1];
-      const next=points[i];
-      if(t<=next.time){
-        const span=Math.max(0.001,next.time-prev.time);
-        const ratio=(t-prev.time)/span;
-        return prev.offset + (next.offset-prev.offset)*ratio;
-      }
-    }
-
-    // After the final calibration point, hold the last residual correction.
-    return points[points.length-1].offset;
-  },
-
-  savedCalibrationOffsetAt(videoTime){
-    return (XState.waveformAbsoluteOffsetSeconds||0) + this.driftOffsetAt(videoTime);
-  },
-
-  effectiveOffsetAt(videoTime){
-    // Temporary/manual Wave± nudge is independent of saved calibration. It can
-    // be used for inspection or to measure the next Abs/Pt value without being
-    // folded into the calibration model until the user clicks Abs or Pt.
-    const manual=XState.waveformOffsetSeconds||0;
-    return manual + this.savedCalibrationOffsetAt(videoTime);
-  },
-
-  driftIsActive(){
-    return Math.abs(Number(XState.waveformAbsoluteOffsetSeconds)||0)>0.001 || this.normalizedCalibrationPoints().length>0;
-  },
+  clampCalibrationOffset(value){ return XCalibration.clampOffset(value); },
+  normalizedCalibrationPoints(){ return XCalibration.normalizedPoints(); },
+  driftOffsetAt(videoTime){ return XCalibration.driftOffsetAt(videoTime); },
+  savedCalibrationOffsetAt(videoTime){ return XCalibration.savedOffsetAt(videoTime); },
+  effectiveOffsetAt(videoTime){ return XCalibration.effectiveOffsetAt(videoTime); },
+  driftIsActive(){ return XCalibration.hasSaved(); },
 
   calibrateAbsoluteAtCurrentOffset(){
-    const offset=this.clampCalibrationOffset(XState.waveformOffsetSeconds||0);
-    if(Math.abs(offset)<0.05){
+    const manual=XCalibration.clampOffset(XState.waveformOffsetSeconds||0);
+    if(Math.abs(manual)<0.05){
       XStatus.set('Set a nonzero Wave± nudge first, then click Abs to save it as the constant waveform offset.');
       return;
     }
-    XState.waveformAbsoluteOffsetSeconds=offset;
-    XState.waveformOffsetSeconds=0;
-    XState.waveformLastPointUndo=null;
-    this.updateOffsetLabel();
-    this.draw();
-    XFiles.autosave();
+    const offset=XCalibration.commitAbsoluteFromManual({source:'wave-absolute'});
     XStatus.set('Saved absolute waveform offset: '+(offset>=0?'+':'')+offset.toFixed(1)+' sec. Temporary Wave± nudge reset to 0.0 sec.');
   },
 
   calibrateDriftAtCurrentTime(){
-    const current=XDom.video && Number.isFinite(XDom.video.currentTime) ? XDom.video.currentTime : 0;
-    const manual=this.clampCalibrationOffset(XState.waveformOffsetSeconds||0);
-    if(current<0.25){
-      XStatus.set('For a beginning sync problem, adjust Wave± at the beginning and click Abs. For later drift, move later, adjust Wave±, then click Pt.');
-      return;
-    }
-    if(Math.abs(manual)<0.05){
-      XStatus.set('Set a nonzero Wave± nudge first, then click Pt to save a calibration point at the current time.');
-      return;
-    }
-
-    // The manual nudge is the remaining correction needed after the current
-    // saved calibration has already been applied. Store a residual drift point
-    // equal to current residual drift plus that remaining correction.
-    const nextResidual=this.clampCalibrationOffset(this.driftOffsetAt(current)+manual);
-    const beforePoints=this.normalizedCalibrationPoints().map(point=>({time:point.time,offset:point.offset}));
-    const points=beforePoints.filter(point=>Math.abs(point.time-current)>=0.25);
-    points.push({time:current, offset:nextResidual});
-    points.sort((a,b)=>a.time-b.time);
-    XState.waveformCalibrationPoints=points;
-    XState.waveformLastPointUndo={
-      beforePoints:beforePoints.map(point=>({time:point.time,offset:point.offset})),
-      afterPoints:points.map(point=>({time:point.time,offset:point.offset})),
-      manualOffset:manual,
-      pointTime:current
-    };
-    XState.waveformOffsetSeconds=0;
-    // Clear legacy two-point fields so old and new project data cannot compete.
-    XState.waveformDriftAnchorTime=0;
-    XState.waveformDriftAnchorOffset=0;
-    this.updateOffsetLabel();
-    this.draw();
-    XFiles.autosave();
-    XStatus.set('Saved waveform calibration point: '+(nextResidual>=0?'+':'')+nextResidual.toFixed(1)+' sec residual at '+XUtils.formatTime(current)+'. Temporary Wave± nudge reset to 0.0 sec.');
+    const current=XDom.video&&Number.isFinite(XDom.video.currentTime)?XDom.video.currentTime:0;
+    const manual=XCalibration.clampOffset(XState.waveformOffsetSeconds||0);
+    if(current<0.25){ XStatus.set('For a beginning sync problem, adjust Wave± at the beginning and click Abs. For later drift, move later, adjust Wave±, then click Pt.'); return; }
+    if(Math.abs(manual)<0.05){ XStatus.set('Set a nonzero Wave± nudge first, then click Pt to save a calibration point at the current time.'); return; }
+    const result=XCalibration.addPointAt(current,manual,{source:'wave-point'});
+    XStatus.set('Saved waveform calibration point: '+(result.offset>=0?'+':'')+result.offset.toFixed(1)+' sec residual at '+XUtils.formatTime(current)+'. Temporary Wave± nudge reset to 0.0 sec.');
   },
 
-  pointArraysMatch(a,b){
-    const left=Array.isArray(a)?a:[];
-    const right=Array.isArray(b)?b:[];
-    if(left.length!==right.length) return false;
-    return left.every((point,index)=>{
-      const other=right[index]||{};
-      return Math.abs((Number(point.time)||0)-(Number(other.time)||0))<0.0005 &&
-        Math.abs((Number(point.offset)||0)-(Number(other.offset)||0))<0.0005;
-    });
-  },
-
-  canUndoLastPoint(){
-    const undo=XState.waveformLastPointUndo;
-    return !!(undo && this.pointArraysMatch(this.normalizedCalibrationPoints(),undo.afterPoints));
-  },
-
+  pointArraysMatch(a,b){ return XCalibration.pointArraysMatch(a,b); },
+  canUndoLastPoint(){ return XCalibration.canUndoLastPoint(); },
   undoLastPointCalibration(){
-    const undo=XState.waveformLastPointUndo;
-    if(!undo || !this.canUndoLastPoint()){
-      XState.waveformLastPointUndo=null;
-      this.updateOffsetLabel();
-      XStatus.set('There is no recent Point command to undo.');
-      return;
-    }
-    XState.waveformCalibrationPoints=(undo.beforePoints||[]).map(point=>({
-      time:Number(point.time)||0,
-      offset:this.clampCalibrationOffset(Number(point.offset)||0)
-    }));
-    XState.waveformOffsetSeconds=this.clampCalibrationOffset(Number(undo.manualOffset)||0);
-    XState.waveformLastPointUndo=null;
-    this.updateOffsetLabel();
-    this.draw();
-    XFiles.autosave();
-    XStatus.set('Undid the last waveform Point command. Restored '+XState.waveformCalibrationPoints.length+' saved point'+(XState.waveformCalibrationPoints.length===1?'':'s')+' and the temporary nudge '+(XState.waveformOffsetSeconds>=0?'+':'')+XState.waveformOffsetSeconds.toFixed(3)+' sec.');
+    const result=XCalibration.undoLastPoint({source:'wave-point-undo'});
+    if(!result.ok){ this.updateOffsetLabel(); XStatus.set('There is no recent Point command to undo.'); return; }
+    XStatus.set('Undid the last waveform Point command. Restored '+result.points.length+' saved point'+(result.points.length===1?'':'s')+' and the temporary nudge '+(result.manual>=0?'+':'')+result.manual.toFixed(3)+' sec.');
   },
 
-  extractCalibrationFromProjectData(data){
-    if(!data || Array.isArray(data) || typeof data !== 'object') return null;
-
-    const hasModernAbs=typeof data.waveformAbsoluteOffsetSeconds === 'number' && Number.isFinite(data.waveformAbsoluteOffsetSeconds);
-    const hasModernPoints=Array.isArray(data.waveformCalibrationPoints);
-    const hasLegacyAnchor=typeof data.waveformDriftAnchorTime === 'number' && Number.isFinite(data.waveformDriftAnchorTime) &&
-      typeof data.waveformDriftAnchorOffset === 'number' && Number.isFinite(data.waveformDriftAnchorOffset);
-    const hasLegacyOffset=typeof data.waveformOffsetSeconds === 'number' && Number.isFinite(data.waveformOffsetSeconds);
-
-    if(!hasModernAbs && !hasModernPoints && !hasLegacyAnchor && !hasLegacyOffset) return null;
-
-    let absoluteOffset=hasModernAbs ? this.clampCalibrationOffset(data.waveformAbsoluteOffsetSeconds) : 0;
-    let points=[];
-    let migratedLegacyOffset=false;
-    let migratedLegacyAnchor=false;
-
-    if(hasModernPoints){
-      points=data.waveformCalibrationPoints.map(point=>({
-        time:Math.max(0,Number(point&&point.time)||0),
-        offset:this.clampCalibrationOffset(Number(point&&point.offset)||0)
-      })).filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.offset));
-    }
-
-    // Older Gravar projects used one drift anchor before the multi-point model.
-    if(!points.length && hasLegacyAnchor && Math.abs(Number(data.waveformDriftAnchorOffset)||0)>0.0005){
-      points=[{
-        time:Math.max(0,Number(data.waveformDriftAnchorTime)||0),
-        offset:this.clampCalibrationOffset(data.waveformDriftAnchorOffset)
-      }];
-      migratedLegacyAnchor=true;
-    }
-
-    // In still older projects waveformOffsetSeconds was the only stored
-    // alignment value. Treat it as a saved absolute offset only when no newer
-    // absolute or multi-point calibration fields are present.
-    if(!hasModernAbs && !hasModernPoints && hasLegacyOffset){
-      absoluteOffset=this.clampCalibrationOffset(data.waveformOffsetSeconds);
-      migratedLegacyOffset=true;
-    }
-
-    const normalized=points
-      .filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.offset))
-      .sort((a,b)=>a.time-b.time);
-
-    return {absoluteOffset, points:normalized, migratedLegacyOffset, migratedLegacyAnchor};
-  },
-
+  extractCalibrationFromProjectData(data){ return XCalibration.extractFromProject(data); },
   async importCalibrationFile(file){
     if(!file) return false;
     try{
       const data=JSON.parse(await file.text());
-      const recovered=this.extractCalibrationFromProjectData(data);
+      const recovered=XCalibration.extractFromProject(data);
       if(!recovered){
         alert('No waveform calibration information was found in that JSON file. Choose a saved Gravar project that contains waveform alignment data.');
         XStatus.set('Waveform calibration import stopped: no recoverable calibration fields were found.');
         return false;
       }
-
-      const existingActive=this.driftIsActive() || Math.abs(Number(XState.waveformOffsetSeconds)||0)>0.001;
+      const existingActive=XCalibration.hasAlignmentState();
       if(existingActive){
         const ok=confirm('Replace the current waveform calibration with the alignment recovered from '+(file.name||'this project JSON')+'?\n\nOnly waveform calibration will be replaced. The current transcript and other project settings will remain unchanged.');
-        if(!ok){
-          XStatus.set('Waveform calibration import cancelled.');
-          return false;
-        }
+        if(!ok){ XStatus.set('Waveform calibration import cancelled.'); return false; }
       }
-
-      XState.waveformAbsoluteOffsetSeconds=this.clampCalibrationOffset(recovered.absoluteOffset);
-      XState.waveformCalibrationPoints=recovered.points.map(point=>({time:point.time,offset:this.clampCalibrationOffset(point.offset)}));
-      XState.waveformOffsetSeconds=0;
-      XState.waveformLastPointUndo=null;
-      XState.waveformDriftAnchorTime=0;
-      XState.waveformDriftAnchorOffset=0;
-      this.updateOffsetLabel();
-      this.draw();
-      XFiles.autosave();
-
+      XCalibration.restore(data,{resetManual:true,source:'calibration-import'});
       const notes=[];
       if(recovered.migratedLegacyOffset) notes.push('legacy waveform offset migrated to Absolute');
       if(recovered.migratedLegacyAnchor) notes.push('legacy drift anchor migrated to a calibration Point');
-      XStatus.set('Recovered waveform calibration from '+(file.name||'project JSON')+': '+this.calibrationSummary()+'. Temporary nudge reset to 0.0 sec.'+(notes.length?' '+notes.join('; ')+'.':''));
+      XStatus.set('Recovered waveform calibration from '+(file.name||'project JSON')+': '+XCalibration.summary()+'. Temporary nudge reset to 0.0 sec.'+(notes.length?' '+notes.join('; ')+'.':''));
       return true;
     }catch(err){
       console.error('Waveform calibration import failed.',err);
@@ -12858,24 +13254,12 @@ const XWaveform = {
   },
 
   clearDriftCalibration(){
-    XState.waveformAbsoluteOffsetSeconds=0;
-    XState.waveformCalibrationPoints=[];
-    XState.waveformLastPointUndo=null;
-    XState.waveformDriftAnchorTime=0;
-    XState.waveformDriftAnchorOffset=0;
-    this.updateOffsetLabel();
-    this.draw();
-    XFiles.autosave();
-    XStatus.set('Saved waveform calibration cleared. Temporary Wave± nudge remains '+((XState.waveformOffsetSeconds||0)>=0?'+':'')+(XState.waveformOffsetSeconds||0).toFixed(1)+' sec.');
+    const manual=Number(XState.waveformOffsetSeconds)||0;
+    XCalibration.clearSaved({source:'wave-clear'});
+    XStatus.set('Saved waveform calibration cleared. Temporary Wave± nudge remains '+(manual>=0?'+':'')+manual.toFixed(1)+' sec.');
   },
 
-  calibrationSummary(){
-    const abs=Number(XState.waveformAbsoluteOffsetSeconds)||0;
-    const points=this.normalizedCalibrationPoints();
-    const absText='Abs '+(abs>=0?'+':'')+abs.toFixed(1)+'s';
-    const pointText=points.length ? points.length+' Pt'+(points.length===1?'':'s') : '0 Pts';
-    return absText+'; '+pointText;
-  },
+  calibrationSummary(){ return XCalibration.summary(); },
 
   updateOffsetLabel(){
     if(!XDom.waveOffsetInd) return;
@@ -13496,7 +13880,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','Sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local V1 media file. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','A single persistent Project name field is always visible at the bottom of the Files pane on Project, Import, Export, Diag, and Auto. It sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration.'],['Project files','Appears below Codes & Symbols in Files → Project and is collapsed by default. Click the Project files header to open it. It shows Project JSON, transcript source, V1, V2, and audio with ✓ Loaded/Saved, ± Reference, ✕ Missing/Failed, or — None. Click any pathname to show a wrapped, selectable pathname below the list. Use Path: Last 3 / Path: Full to toggle the display. Full means the fullest path Gravar can know; ordinary web browsers often hide the macOS /Users/... absolute path, so Project-folder-relative or filename-only locations may be shown.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local V1 media file. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','When Child tiers is checked, rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier, rows beginning with a single ( are parent tiers, and italic Speaker rows can also be child tiers. When Child tiers is off, parentheses are ordinary transcript text and rows retain their own timecodes.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values, including child tiers marked with double parentheses. When unchecked, child tiers retain their own Start/Stop/Dur values; merely becoming a child tier does not replace their timing.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -13927,6 +14311,255 @@ async function dataUrlToBlob(dataUrl){
   return await response.blob();
 }
 
+const XProjectSectionRollups = {
+  sections:[
+    {title:'projectControlsRollupTitle',content:'projectControlsRollupContent',toggle:'projectControlsRollupToggle'},
+    {title:'codesSymbolsRollupTitle',content:'codesSymbolsRollupContent',toggle:'codesSymbolsRollupToggle'}
+  ],
+  set(section,open){
+    const title=document.getElementById(section.title);
+    const content=document.getElementById(section.content);
+    const toggle=document.getElementById(section.toggle);
+    if(!title || !content) return;
+    const isOpen=!!open;
+    content.classList.toggle('rolled-up',!isOpen);
+    title.setAttribute('aria-expanded',isOpen?'true':'false');
+    if(toggle) toggle.textContent=isOpen?'▾':'▸';
+  },
+  bind(){
+    this.sections.forEach(section=>{
+      const title=document.getElementById(section.title);
+      const content=document.getElementById(section.content);
+      if(!title || !content) return;
+      if(title.dataset.projectSectionRollupBound!=='true'){
+        title.dataset.projectSectionRollupBound='true';
+        const flip=(ev)=>{
+          if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+          this.set(section,content.classList.contains('rolled-up'));
+        };
+        title.addEventListener('click',flip);
+        title.addEventListener('keydown',(ev)=>{
+          if(ev.key==='Enter' || ev.key===' '){ flip(ev); }
+        });
+      }
+      this.set(section,false);
+    });
+  }
+};
+
+const XProjectFiles = {
+  keys:['project','transcript','v1','v2','audio'],
+  labels:{project:'Project JSON',transcript:'Transcript',v1:'V1',v2:'V2',audio:'Audio'},
+  emptyRecord(){ return {name:'',path:'',status:'none',detail:'',scope:'unknown'}; },
+  ensure(){
+    if(!XState.projectFileLocations || typeof XState.projectFileLocations!=='object') XState.projectFileLocations={};
+    this.keys.forEach(key=>{
+      const rec=XState.projectFileLocations[key];
+      if(!rec || typeof rec!=='object') XState.projectFileLocations[key]=this.emptyRecord();
+      else XState.projectFileLocations[key]=Object.assign(this.emptyRecord(),rec);
+    });
+    if(XState.projectFilePathMode!=='full') XState.projectFilePathMode='short';
+    return XState.projectFileLocations;
+  },
+  reset(){
+    XState.projectFileLocations={};
+    this.keys.forEach(key=>XState.projectFileLocations[key]=this.emptyRecord());
+    this.render();
+  },
+  sanitizePath(path){ return String(path||'').replace(/\\+/g,'/').replace(/\/+/g,'/').replace(/\/$/,''); },
+  pathFromFile(file){
+    if(!file) return {path:'',scope:'unknown'};
+    const absolute=String(file.path||file.fullPath||'').trim();
+    if(absolute) return {path:this.sanitizePath(absolute),scope:'absolute'};
+    const relative=String(file.webkitRelativePath||'').trim();
+    if(relative) return {path:this.sanitizePath(relative),scope:'relative'};
+    const name=String(file.name||'').trim();
+    return {path:name,scope:name?'name-only':'unknown'};
+  },
+  projectFolderPath(name, folderOverride){
+    const clean=String(name||'').trim();
+    if(!clean) return '';
+    const project=String(folderOverride||XState.dataDirName||XState.projectExpectedFolderName||'').trim();
+    const workspace=String(XState.workspaceDirName||'').trim();
+    if(workspace && project) return this.sanitizePath(workspace+'/Projects/'+project+'/'+clean);
+    if(project) return this.sanitizePath(project+'/'+clean);
+    return clean;
+  },
+  set(key,values){
+    if(!this.keys.includes(key)) return;
+    const map=this.ensure();
+    map[key]=Object.assign({},map[key],values||{});
+    if(values && values.path!==undefined) map[key].path=this.sanitizePath(values.path);
+    this.render();
+  },
+  fromFile(key,file,status,detail){
+    const p=this.pathFromFile(file);
+    this.set(key,{name:(file&&file.name)||'',path:p.path,status:status||'loaded',detail:detail||'',scope:p.scope});
+  },
+  fromProjectFolder(key,name,status,detail){
+    this.set(key,{name:String(name||''),path:this.projectFolderPath(name),status:status||'loaded',detail:detail||'',scope:'project-folder'});
+  },
+  markMediaLoaded(key,blob,name,statusMessage){
+    const msg=String(statusMessage||'');
+    const prior=this.ensure()[key]||this.emptyRecord();
+    if(/project-folder/i.test(msg)){
+      this.fromProjectFolder(key,name,'loaded','Restored from Project folder');
+      return;
+    }
+    if(/embedded/i.test(msg)){
+      this.set(key,{name:String(name||''),path:'Embedded in Project JSON',status:'loaded',detail:'Embedded project media',scope:'embedded'});
+      return;
+    }
+    const p=this.pathFromFile(blob);
+    const path=p.path || prior.path || String(name||'');
+    const scope=p.path ? p.scope : (prior.scope||'name-only');
+    const detail=/remembered/i.test(msg)?'Restored from browser recovery storage':'Loaded';
+    this.set(key,{name:String(name||prior.name||''),path,status:'loaded',detail,scope});
+  },
+  setReferencedFromProject(data){
+    const saved=(data&&data.projectFileLocations&&typeof data.projectFileLocations==='object')?data.projectFileLocations:{};
+    XState.projectFileLocations={};
+    this.ensure();
+    ['transcript','v1','v2','audio'].forEach(key=>{
+      if(saved[key] && typeof saved[key]==='object'){
+        const rec=Object.assign(this.emptyRecord(),saved[key]);
+        const projectHasRows=Array.isArray(data) || Array.isArray(data&&data.rows);
+        rec.status=(key==='transcript' && projectHasRows)?'loaded':(rec.name||rec.path?'referenced':'none');
+        if(key==='transcript' && projectHasRows) rec.detail=rec.detail||'Transcript data loaded from project JSON';
+        XState.projectFileLocations[key]=rec;
+      }
+    });
+    const v1Name=String((data&& (data.videoName||data.projectVideoSavedName))||'').trim();
+    const v2Name=String((data&&data.secondaryVideoName)||'').trim();
+    const audioName=String((data&&data.audioName)||'').trim();
+    const projectFolder=String((data&&(data.projectFolderName||data.dataFolderName))||'').trim();
+    if(v1Name && !XState.projectFileLocations.v1.name){ XState.projectFileLocations.v1={name:v1Name,path:this.projectFolderPath(v1Name,projectFolder),status:'referenced',detail:'Saved V1 reference',scope:'project-folder'}; }
+    if(v2Name && !XState.projectFileLocations.v2.name){ XState.projectFileLocations.v2={name:v2Name,path:this.projectFolderPath(v2Name,projectFolder),status:'referenced',detail:'Saved V2 reference',scope:'project-folder'}; }
+    if(audioName && !XState.projectFileLocations.audio.name){ XState.projectFileLocations.audio={name:audioName,path:this.projectFolderPath(audioName,projectFolder),status:'referenced',detail:'Saved audio reference',scope:'project-folder'}; }
+    if((Array.isArray(data) || Array.isArray(data&&data.rows)) && !XState.projectFileLocations.transcript.path){
+      XState.projectFileLocations.transcript={name:'Project transcript',path:'Stored inside Project JSON',status:'loaded',detail:'Transcript data loaded from project JSON',scope:'embedded'};
+    }
+    this.render();
+  },
+  serialize(){
+    const map=this.ensure();
+    const out={};
+    this.keys.forEach(key=>{ out[key]=Object.assign({},map[key]); });
+    return out;
+  },
+  statusText(status){
+    const table={loaded:'✓ Loaded',saved:'✓ Saved',referenced:'± Reference',loading:'… Loading',failed:'✕ Failed',missing:'✕ Missing',none:'— None'};
+    return table[status]||table.none;
+  },
+  truncatePath(path){
+    const clean=this.sanitizePath(path);
+    if(!clean) return '—';
+    return clean;
+  },
+  displayPath(path){
+    const clean=this.sanitizePath(path);
+    if(!clean) return '—';
+    if(XState.projectFilePathMode==='full') return clean;
+    const prefix=clean.startsWith('/')?'/':'';
+    const parts=clean.split('/').filter(Boolean);
+    if(parts.length<=3) return clean;
+    return '…/'+parts.slice(-3).join('/');
+  },
+  renderSelectedPath(){
+    if(!XDom.projectFilePathViewer || !XDom.projectFilePathViewerValue || !XDom.projectFilePathViewerTitle) return;
+    const key=String(this.selectedPathKey||'');
+    const map=this.ensure();
+    const rec=map[key];
+    if(!key || !rec || !(rec.path||rec.name)){
+      XDom.projectFilePathViewer.classList.add('hidden');
+      XDom.projectFilePathViewerValue.textContent='';
+      return;
+    }
+    const raw=rec.path||rec.name||'';
+    XDom.projectFilePathViewerTitle.textContent=(this.labels[key]||'Selected')+' path — '+(XState.projectFilePathMode==='full'?'Full':'Last 3 levels');
+    XDom.projectFilePathViewerValue.textContent=this.displayPath(raw);
+    const limitation=(rec.scope==='name-only'||rec.scope==='relative')?' Browser security did not expose the macOS absolute path.':'';
+    XDom.projectFilePathViewerValue.title=raw+(rec.detail?' — '+rec.detail:'')+limitation;
+    XDom.projectFilePathViewer.classList.remove('hidden');
+  },
+  setRollup(open){
+    if(!XDom.projectFileStatusBlock || !XDom.projectFilesRollupTitle) return;
+    const isOpen=!!open;
+    XDom.projectFileStatusBlock.classList.toggle('rolled-up',!isOpen);
+    XDom.projectFilesRollupTitle.setAttribute('aria-expanded',isOpen?'true':'false');
+    if(XDom.projectFilesRollupToggle) XDom.projectFilesRollupToggle.textContent=isOpen?'▾':'▸';
+  },
+  render(){
+    const map=this.ensure();
+    if(XDom.projectFilePathMode){
+      const full=XState.projectFilePathMode==='full';
+      XDom.projectFilePathMode.dataset.mode=full?'full':'short';
+      XDom.projectFilePathMode.textContent=full?'Path: Full':'Path: Last 3';
+      XDom.projectFilePathMode.title=full?'Showing the fullest pathname Gravar can know. Click for the last three hierarchy levels.':'Showing the last three hierarchy levels. Click for the fullest pathname Gravar can know.';
+    }
+    this.keys.forEach(key=>{
+      const rec=map[key]||this.emptyRecord();
+      const statusEl=document.querySelector('[data-file-status="'+key+'"]');
+      const pathEl=document.querySelector('[data-file-path="'+key+'"]');
+      if(statusEl){
+        statusEl.textContent=this.statusText(rec.status);
+        statusEl.className='project-file-state status-'+(rec.status||'none');
+        statusEl.title=rec.detail||this.statusText(rec.status);
+      }
+      if(pathEl){
+        const raw=rec.path||rec.name||'';
+        const display=this.displayPath(raw);
+        pathEl.textContent=display;
+        pathEl.classList.toggle('no-path',!raw);
+        pathEl.setAttribute('aria-disabled',raw?'false':'true');
+        const limitation=(rec.scope==='name-only'||rec.scope==='relative')?' Browser security did not expose the macOS absolute path.':'';
+        pathEl.title=(raw||'No path recorded.')+(rec.detail?' — '+rec.detail:'')+limitation+(raw?' Click to show this pathname below.':'');
+      }
+    });
+    this.renderSelectedPath();
+  },
+  bind(){
+    this.ensure();
+    this.selectedPathKey='';
+    if(XDom.projectFilePathMode){
+      XDom.projectFilePathMode.onclick=(ev)=>{
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        XState.projectFilePathMode=XState.projectFilePathMode==='full'?'short':'full';
+        this.render();
+        if(typeof XFiles!=='undefined' && typeof XFiles.autosave==='function') XFiles.autosave();
+      };
+    }
+    document.querySelectorAll('[data-file-path]').forEach(pathEl=>{
+      if(pathEl.dataset.projectPathBound==='true') return;
+      pathEl.dataset.projectPathBound='true';
+      const show=()=>{
+        const key=String(pathEl.dataset.filePath||'');
+        const rec=this.ensure()[key];
+        if(!rec || !(rec.path||rec.name)) return;
+        this.selectedPathKey=key;
+        this.renderSelectedPath();
+      };
+      pathEl.addEventListener('click',show);
+      pathEl.addEventListener('keydown',(ev)=>{
+        if(ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); show(); }
+      });
+    });
+    if(XDom.projectFilesRollupTitle && XDom.projectFilesRollupTitle.dataset.projectFilesRollupBound!=='true'){
+      XDom.projectFilesRollupTitle.dataset.projectFilesRollupBound='true';
+      const flip=(ev)=>{
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        this.setRollup(XDom.projectFileStatusBlock && XDom.projectFileStatusBlock.classList.contains('rolled-up'));
+      };
+      XDom.projectFilesRollupTitle.addEventListener('click',flip);
+      XDom.projectFilesRollupTitle.addEventListener('keydown',(ev)=>{
+        if(ev.key==='Enter' || ev.key===' '){ flip(ev); }
+      });
+    }
+    this.setRollup(false);
+    this.render();
+  }
+};
+
 const XFiles = {
   showFilesPopup(){
     if(typeof XInfoPopups !== 'undefined') XInfoPopups.show('files');
@@ -14087,6 +14720,7 @@ const XFiles = {
 
   closeProject(){
     if(!confirm('Close the current project and start a blank project? Unsaved changes will be lost.')) return;
+    XAutosaveCoordinator.cancel();
 
     try{
       XVideo.stopSegmentPlayback();
@@ -14108,6 +14742,7 @@ const XFiles = {
     XState.projectExpectedFolderName='';
     XState.projectReconnectHandle=null;
     XState.projectReconnectData=null;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.reset();
     this.setReconnectProjectFolderVisible(false);
     XState.activeRowId=null;
     XState.selectedRowIds=new Set();
@@ -14203,9 +14838,12 @@ const XFiles = {
   payload(){
     // Commit active Code and rich-text Line Note HTML before project save or autosave so Line Note formatting persists across reloads.
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
+    const projectModules=XProjectState.captureBundle();
     return {
       appVersion:'Gravar_v'+XBuild.version+'_standalone_web',
-      projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true},
+      projectFormatFeatures:{richLineNoteHtml:true, notesFormattingExport:'rtf-only', projectLogHtml:true, parentChildTierTags:true, legacyChildLineTags:true, transcriptParenthesesChildTiers:true, caDrawingTools:true, drawingSpecsInVClip:true, modularStateAdapters:true, messageBus:true},
+      moduleState:projectModules.moduleState,
+      ...projectModules.legacy,
       projectName:XState.projectName || '',
       logHtml:(XDom.log ? XRichText.htmlFrom(XDom.log) : (XState.logHtml||'')),
       rows:XState.rows,
@@ -14232,11 +14870,6 @@ const XFiles = {
       waveformWindowSeconds:XState.waveformWindowSeconds||0,
       waveformAudioDuration:XState.waveformAudioDuration||0,
       waveformVideoDurationAtBuild:XState.waveformVideoDurationAtBuild||0,
-      waveformOffsetSeconds:XState.waveformOffsetSeconds,
-      waveformAbsoluteOffsetSeconds:XState.waveformAbsoluteOffsetSeconds||0,
-      waveformCalibrationPoints:Array.isArray(XState.waveformCalibrationPoints) ? XState.waveformCalibrationPoints : [],
-      waveformDriftAnchorTime:XState.waveformDriftAnchorTime||0,
-      waveformDriftAnchorOffset:XState.waveformDriftAnchorOffset||0,
       videoScrubRangeSeconds:XState.videoScrub.rangeSeconds,
       autosaveEnabled:!!XState.autosaveEnabled,
       autosaveMinutes:XState.autosaveMinutes,
@@ -14252,11 +14885,6 @@ const XFiles = {
       showWordCountField:XState.showWordCountField!==false,
       showUtteranceCountField:XState.showUtteranceCountField!==false,
       showSpeakerField:XState.showSpeakerField!==false,
-      childSpeakerMode:!!XState.childSpeakerMode,
-      childTierMode:!!XState.childSpeakerMode,
-      forceParentTimecodes:!!XState.forceParentTimecodes,
-      removeChildTierNumbers:!!XState.removeChildTierNumbers,
-      addChildTierAbc:!!XState.addChildTierAbc,
       transcriptFontSizePx:XTranscript.validTranscriptFontSizePx(XState.transcriptFontSizePx),
       transcriptPopoutScale:(typeof XTranscriptPopout !== 'undefined' && typeof XTranscriptPopout.normalizedScale === 'function') ? XTranscriptPopout.normalizedScale() : (Number(XState.transcriptPopoutScale)||1),
       hideMainTranscriptWhenPopout:!!XState.hideMainTranscriptWhenPopout,
@@ -14264,6 +14892,8 @@ const XFiles = {
       visibleFilterRowIds:(typeof XTranscript!=='undefined' && typeof XTranscript.transcriptFilterResult==='function' && XTranscript.transcriptFilterResult().visible) ? Array.from(XTranscript.transcriptFilterResult().visible) : null,
       dataFolderName:XState.dataDirName || XState.projectExpectedFolderName || '',
       projectFolderName:XState.dataDirName || XState.projectExpectedFolderName || '',
+      projectFilePathMode:XState.projectFilePathMode==='full' ? 'full' : 'short',
+      projectFileLocations:(typeof XProjectFiles!=='undefined') ? XProjectFiles.serialize() : null,
       workspaceFolderName:XState.workspaceDirName || '',
       workspaceFrameClipFolderName:XState.frameClipDirName || '',
       workspaceVideoClipFolderName:XState.videoClipDirName || '',
@@ -14278,9 +14908,6 @@ const XFiles = {
       audioType:XState.audioType || '',
       audioKey:XState.audioKey || '',
       audioEnabled:!!XState.audioEnabled,
-      symbolRows:XState.symbolRows,
-      activeSymbolRowId:XState.activeSymbolRowId,
-      symbolEditMode:XState.symbolEditMode,
       talkActionCodes:(typeof XTalkActionPalette !== 'undefined' && typeof XTalkActionPalette.serializeItems === 'function') ? XTalkActionPalette.serializeItems(XState.talkActionCodes) : (XState.talkActionCodes||[]).map(code=>({id:code.id||XUtils.id(),label:String(code.label||'')})),
       activeTalkActionCodeId:XState.activeTalkActionCodeId,
       talkActionEditMode:XState.talkActionEditMode,
@@ -14524,6 +15151,11 @@ const XFiles = {
       if(data.videoName||data.projectVideoSavedName) wanted.push('V1');
       if(data.secondaryVideoName) wanted.push('V2');
       if(data.audioName) wanted.push('audio');
+      if(typeof XProjectFiles!=='undefined'){
+        if(wanted.includes('V1') && !restored.v1 && !(XVideo.hasVideo&&XVideo.hasVideo())) XProjectFiles.fromProjectFolder('v1',data.videoName||data.projectVideoSavedName,'missing','Saved V1 filename was not found in the reconnected Project folder');
+        if(wanted.includes('V2') && !restored.v2 && !(XVideo.hasSecondaryVideo&&XVideo.hasSecondaryVideo())) XProjectFiles.fromProjectFolder('v2',data.secondaryVideoName,'missing','Saved V2 filename was not found in the reconnected Project folder');
+        if(wanted.includes('audio') && !restored.audio && !(XVideo.hasAudio&&XVideo.hasAudio())) XProjectFiles.fromProjectFolder('audio',data.audioName,'missing','Saved audio filename was not found in the reconnected Project folder');
+      }
       XStatus.set('Project folder reconnected: '+(handle.name||expected||'folder')+'. '+(labels.length ? 'Restored '+labels.join(', ')+' from saved filenames. ' : (wanted.length ? 'No missing saved media filenames were found in that folder. ' : 'No saved media references required restoration. '))+'Saved waveform calibration was preserved.');
     }catch(err){
       if(err && err.name==='AbortError'){
@@ -14708,12 +15340,14 @@ const XFiles = {
       this.setReconnectProjectFolderVisible(false);
       try{ await XFolderStore.rememberProjectFolder(handle); }catch(storeErr){ console.warn('Could not remember Project folder handle.',storeErr); }
       if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent=XState.dataDirName;
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.render();
       try{ await this.synchronizeAutosaveFolderState(); }catch(folderErr){ console.warn('Could not synchronize Project-folder autosaves and Old_files.', folderErr); }
 
       let message='Project folder selected: '+XState.dataDirName+'. Project files and autosaves will be written there; older autosaves will be archived in Old_files.';
       if(XState.videoBlob && XState.videoName){
         try{
           await this.saveLoadedVideoToProjectFolder();
+          if(typeof XProjectFiles!=='undefined') XProjectFiles.fromProjectFolder('v1',XState.videoName,'loaded','V1 copied into designated Project folder');
           message+=' Copied video into the project folder: '+XState.videoName+'.';
         }catch(videoErr){
           console.warn('Could not copy video into project folder.',videoErr);
@@ -14735,12 +15369,12 @@ const XFiles = {
   async saveProject(){
     try{
       if(XDom.projectName) XState.projectName=XDom.projectName.value.trim();
-      const payload=this.payload();
+      let payload=this.payload();
       payload.videoEmbedded=false;
       payload.videoDataUrl='';
       payload.audioEmbedded=false;
       payload.audioDataUrl='';
-      const json=JSON.stringify(payload,null,2);
+      let json=JSON.stringify(payload,null,2);
       const filename=this.projectFileName();
 
       if(XState.workspaceDirHandle){
@@ -14750,12 +15384,23 @@ const XFiles = {
       if(folderReady && XState.dataDirHandle){
         let copiedVideo=false;
         try{ copiedVideo=await this.saveLoadedVideoToProjectFolder(); }catch(videoErr){ console.warn('Could not copy video to project folder.',videoErr); }
+        if(typeof XProjectFiles!=='undefined'){
+          XProjectFiles.fromProjectFolder('project',filename,'saved','Project JSON saved to designated Project folder');
+          if(copiedVideo) XProjectFiles.fromProjectFolder('v1',XState.videoName,'loaded','V1 present in designated Project folder');
+          payload=this.payload();
+          payload.videoEmbedded=false;
+          payload.videoDataUrl='';
+          payload.audioEmbedded=false;
+          payload.audioDataUrl='';
+          json=JSON.stringify(payload,null,2);
+        }
         await this.writeTextFileToDataFolder(filename,json);
         try{ await this.synchronizeAutosaveFolderState(); }catch(syncErr){ console.warn('Project saved, but autosave-folder synchronization failed.',syncErr); }
         XStatus.set('Project saved to designated Project folder: '+filename+(copiedVideo?' ; video present: '+XState.videoName:'.')+' Autosaves and Old_files are aligned with this folder.');
       }else{
         if(!this.hasDirectFolderAccess()) this.showSafariSaveGuidance(false);
         XUtils.download(json,filename,'application/json;charset=utf-8');
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.set('project',{name:filename,path:filename,status:'saved',detail:'Project JSON downloaded; browser controls the destination path',scope:'name-only'});
         XStatus.set(this.hasDirectFolderAccess()
           ? 'Project folder was not available. Project data downloaded instead. Choose Project folder to save directly into the project folder.'
           : 'Project downloaded. In Safari, choose the team project folder in the Save As dialog; if no dialog appears, set Safari File download location to Ask for each download.');
@@ -14974,12 +15619,19 @@ const XFiles = {
 
   loadProject(file){
     if(!file) return;
+    XAutosaveCoordinator.cancel();
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'loading','Reading Gravar project JSON');
     const reader=new FileReader();
     reader.onload=async e=>{
       try{
         const data=JSON.parse(e.target.result);
         const rows=Array.isArray(data)?data:data.rows;
         if(!Array.isArray(rows)) throw new Error('No rows');
+        if(typeof XProjectFiles!=='undefined'){
+          XState.projectFilePathMode=data.projectFilePathMode==='full'?'full':'short';
+          XProjectFiles.setReferencedFromProject(data);
+          XProjectFiles.fromFile('project',file,'loaded','Project JSON loaded successfully');
+        }
         XState.rows=rows.map(r=>({
           id:r.id||XUtils.id(),
           rowType:r.rowType || (String(r.speaker||'').trim().toLowerCase()==='cmt' ? 'comment' : 'transcript'),
@@ -14992,6 +15644,7 @@ const XFiles = {
           notes:(r.notes==null?'':String(r.notes))
         }));
         XState.projectName=data.projectName||'';
+        XProjectState.restore(data,{source:'project-load'});
         // Keep the saved V1 identity even if browser/project-folder restoration fails.
         // Manual Load video can then distinguish reattaching the same project video
         // (preserve calibration) from selecting a genuinely different video (reset).
@@ -15046,33 +15699,7 @@ const XFiles = {
           XState.waveformWindowSeconds=allowedWindows.includes(data.waveformWindowSeconds) ? data.waveformWindowSeconds : 0;
           if(XDom.waveWindowSelect) XDom.waveWindowSelect.value=String(XState.waveformWindowSeconds);
         }
-        if(typeof data.waveformOffsetSeconds === 'number'){
-          XState.waveformOffsetSeconds=Math.max(-4,Math.min(4,data.waveformOffsetSeconds));
-        }
-        if(typeof data.waveformAbsoluteOffsetSeconds === 'number'){
-          XState.waveformAbsoluteOffsetSeconds=Math.max(-4,Math.min(4,data.waveformAbsoluteOffsetSeconds));
-        }else{
-          XState.waveformAbsoluteOffsetSeconds=0;
-        }
-        if(Array.isArray(data.waveformCalibrationPoints)){
-          XState.waveformCalibrationPoints=data.waveformCalibrationPoints.map(point=>({
-            time:Math.max(0,Number(point&&point.time)||0),
-            offset:Math.max(-4,Math.min(4,Number(point&&point.offset)||0))
-          })).filter(point=>Number.isFinite(point.time)&&Number.isFinite(point.offset));
-        }else{
-          XState.waveformCalibrationPoints=[];
-        }
-        if(typeof data.waveformDriftAnchorTime === 'number'){
-          XState.waveformDriftAnchorTime=Math.max(0,data.waveformDriftAnchorTime);
-        }
-        if(typeof data.waveformDriftAnchorOffset === 'number'){
-          XState.waveformDriftAnchorOffset=Math.max(-4,Math.min(4,data.waveformDriftAnchorOffset));
-        }
-        if(!Array.isArray(data.waveformCalibrationPoints) && (XState.waveformDriftAnchorTime||0)>0.001 && Math.abs(XState.waveformDriftAnchorOffset||0)>0.001){
-          XState.waveformCalibrationPoints=[{time:XState.waveformDriftAnchorTime, offset:XState.waveformDriftAnchorOffset}];
-        }
-        if(typeof XWaveform !== 'undefined' && typeof XWaveform.updateOffsetLabel === 'function') XWaveform.updateOffsetLabel();
-        if(typeof XWaveform !== 'undefined' && typeof XWaveform.draw === 'function') requestAnimationFrame(()=>XWaveform.draw());
+        // V0.6.197: waveform calibration restored by XProjectState/XCalibration above.
         if(typeof data.videoScrubRangeSeconds === 'number'){
           XState.videoScrub.rangeSeconds=data.videoScrubRangeSeconds;
         }
@@ -15091,12 +15718,7 @@ const XFiles = {
         XState.showWordCountField = (typeof data.showWordCountField === 'boolean') ? data.showWordCountField : true;
         XState.showUtteranceCountField = (typeof data.showUtteranceCountField === 'boolean') ? data.showUtteranceCountField : true;
         XState.showSpeakerField = (typeof data.showSpeakerField === 'boolean') ? data.showSpeakerField : true;
-        if(typeof data.childTierMode === 'boolean') XState.childSpeakerMode=data.childTierMode;
-        else if(typeof data.childSpeakerMode === 'boolean') XState.childSpeakerMode=data.childSpeakerMode;
-        else XState.childSpeakerMode=false;
-        XState.forceParentTimecodes = (typeof data.forceParentTimecodes === 'boolean') ? data.forceParentTimecodes : false;
-        XState.removeChildTierNumbers = (typeof data.removeChildTierNumbers === 'boolean') ? data.removeChildTierNumbers : false;
-        XState.addChildTierAbc = (typeof data.addChildTierAbc === 'boolean') ? data.addChildTierAbc : false;
+        // V0.6.197: child-tier settings restored by XProjectState/XTranscriptHierarchy above.
         if(typeof XDrawing !== 'undefined' && typeof XDrawing.loadFromProject === 'function') XDrawing.loadFromProject(data);
         if(typeof data.transcriptFontSizePx === 'number') XState.transcriptFontSizePx=XTranscript.validTranscriptFontSizePx(data.transcriptFontSizePx);
         else XState.transcriptFontSizePx=15;
@@ -15130,12 +15752,7 @@ const XFiles = {
             if(typeof XVideo.updateSecondaryVideoVisibleButton === 'function') XVideo.updateSecondaryVideoVisibleButton();
           }
         }
-        if(Array.isArray(data.symbolRows)){
-          XState.symbolRows=data.symbolRows;
-          XState.activeSymbolRowId=data.activeSymbolRowId||(XState.symbolRows[0]&&XState.symbolRows[0].id);
-          if(typeof data.symbolEditMode === 'boolean') XState.symbolEditMode=data.symbolEditMode;
-          XSymbols.render();
-        }
+        // V0.6.198: Symbols are restored by the XProjectState Symbols adapter above.
         if(Array.isArray(data.talkActionCodes)){
           if(typeof XTalkActionPalette !== 'undefined' && typeof XTalkActionPalette.normalizeCodeSet === 'function'){
             const normalizedTalkCodes=XTalkActionPalette.normalizeCodeSet(data);
@@ -15203,17 +15820,28 @@ const XFiles = {
         XTranscript.render();
         XSidePane.sync();
         const videoRestored=await this.restoreVideoFromProject(data);
-        if(typeof this.restoreSecondaryVideoFromProject === 'function') await this.restoreSecondaryVideoFromProject(data);
-        if(typeof this.restoreAudioFromProject === 'function') await this.restoreAudioFromProject(data);
+        const secondaryRestored=(typeof this.restoreSecondaryVideoFromProject === 'function') ? await this.restoreSecondaryVideoFromProject(data) : false;
+        const audioRestored=(typeof this.restoreAudioFromProject === 'function') ? await this.restoreAudioFromProject(data) : false;
+        if(typeof XProjectFiles!=='undefined'){
+          if(data.secondaryVideoName && !secondaryRestored) XProjectFiles.set('v2',{name:data.secondaryVideoName,path:(XProjectFiles.ensure().v2.path||XProjectFiles.projectFolderPath(data.secondaryVideoName,rememberedProjectFolder)),status:'referenced',detail:'V2 referenced by project but not currently loaded',scope:(XProjectFiles.ensure().v2.scope||'project-folder')});
+          if(data.audioName && !audioRestored) XProjectFiles.set('audio',{name:data.audioName,path:(XProjectFiles.ensure().audio.path||XProjectFiles.projectFolderPath(data.audioName,rememberedProjectFolder)),status:'referenced',detail:'Audio referenced by project but not currently loaded',scope:(XProjectFiles.ensure().audio.scope||'project-folder')});
+        }
         if(!videoRestored && data.videoName){
+          if(typeof XProjectFiles!=='undefined') XProjectFiles.set('v1',{name:data.videoName,path:(XProjectFiles.ensure().v1.path||XProjectFiles.projectFolderPath(data.videoName)),status:'referenced',detail:'V1 referenced by project but not currently loaded',scope:(XProjectFiles.ensure().v1.scope||'project-folder')});
           const canReconnect=!!(this.hasDirectFolderAccess() && rememberedProjectFolder);
           XStatus.set('Project transcript loaded. '+(canReconnect ? 'Use Reconnect to authorize '+rememberedProjectFolder+' and let Gravar search for '+data.videoName+', V2, and external audio. ' : 'Reload or convert video manually if needed: '+data.videoName+'. ')+'Reattaching the same V1 will preserve saved waveform calibration.');
         }
+        XBus.emit('project:loaded',{data,file,videoRestored,secondaryRestored,audioRestored});
       }catch(err){
         console.error(err);
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'failed','Project JSON could not be loaded');
         alert('Could not load project.');
         XStatus.set('Project load failed.');
       }
+    };
+    reader.onerror=()=>{
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'failed','Project JSON could not be read');
+      XStatus.set('Project load failed: file could not be read.');
     };
     reader.readAsText(file);
   },
@@ -16091,6 +16719,7 @@ const XFiles = {
   },
   importDote(file){
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing DOTE transcript');
     const reader=new FileReader();
     reader.onload=e=>{
       let data;
@@ -16099,12 +16728,14 @@ const XFiles = {
       }catch(err){
         alert('DOTE import failed: this file is not valid JSON.');
         XStatus.set('DOTE import failed: invalid JSON in '+(file.name||'file')+'.');
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'failed','DOTE file is not valid JSON');
         return;
       }
 
       if(!data || !Array.isArray(data.lines)){
         alert('DOTE import failed: expected a top-level lines array.');
         XStatus.set('DOTE import failed: no top-level lines array in '+(file.name||'file')+'.');
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'failed','DOTE structure not recognized');
         return;
       }
 
@@ -16162,11 +16793,13 @@ const XFiles = {
       if(!rows.length){
         alert('DOTE import failed: no usable transcript lines were found.');
         XStatus.set('DOTE import failed: no usable lines in '+(file.name||'file')+'.');
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'failed','DOTE contained no usable transcript lines');
         return;
       }
 
       const existing=(XState.rows||[]).filter(row=>row && (row.start||row.end||row.speaker||row.transcript||row.notes||row.talkAction));
       if(existing.length && !confirm('Importing this DOTE file will replace the current transcript. Continue?')){
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'referenced','DOTE file selected, but import was cancelled; current transcript was not replaced');
         XStatus.set('DOTE import cancelled.');
         return;
       }
@@ -16200,25 +16833,28 @@ const XFiles = {
       this.autosave();
 
       const skippedText=skipped.length ? ' Skipped '+skipped.length+' unusable line'+(skipped.length===1?'':'s')+'.' : '';
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loaded','DOTE transcript imported successfully');
       XStatus.set('Imported '+XState.rows.length+' DOTE row'+(XState.rows.length===1?'':'s')+' from '+(file.name||'file')+'; '+speakers.size+' speaker'+(speakers.size===1?'':'s')+'.'+skippedText);
     };
     reader.onerror=()=>{
       alert('DOTE import failed: the file could not be read.');
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'failed','DOTE file could not be read');
       XStatus.set('DOTE import failed: could not read '+(file.name||'file')+'.');
     };
     reader.readAsText(file);
   },
   importElanTsv(file){
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing ELAN TSV transcript');
     const reader=new FileReader();
-    reader.onload=e=>this.importElanTsvText(String(e.target.result||''), file.name || 'ELAN TSV');
+    reader.onload=e=>this.importElanTsvText(String(e.target.result||''), file.name || 'ELAN TSV', file);
     reader.readAsText(file);
   },
   looksLikeTranscriptTier(tier){
     const t=String(tier||'').toLowerCase();
     return /transcript|contrib|sp\/v|speech|utterance|talk/.test(t);
   },
-  importElanTsvText(text, sourceName){
+  importElanTsvText(text, sourceName, sourceFile){
     const rawLines=String(text||'')
     .replace(/\uFEFF/g,'')
     .split(/\n/)
@@ -16226,6 +16862,7 @@ const XFiles = {
     .filter(line=>line.trim());
 
     if(!rawLines.length){
+      if(typeof XProjectFiles!=='undefined' && sourceFile) XProjectFiles.fromFile('transcript',sourceFile,'failed','ELAN TSV file was empty');
       alert('Empty ELAN TSV file.');
       return;
     }
@@ -16292,6 +16929,7 @@ const XFiles = {
     if(!rows.length){
       alert('No ELAN annotation rows were found. Expected tab-delimited columns: Tier, Speaker/Participant, Onset, Offset, Annotation.');
       XStatus.set('ELAN TSV import failed: no annotation rows found.');
+      if(typeof XProjectFiles!=='undefined' && sourceFile) XProjectFiles.fromFile('transcript',sourceFile,'failed','ELAN TSV contained no annotation rows');
       return;
     }
 
@@ -16334,6 +16972,10 @@ const XFiles = {
     .map(tier=>tier+': '+tierCounts[tier])
     .join('; ');
     const skippedText=skipped.length ? ' Skipped '+skipped.length+' non-annotation line'+(skipped.length===1?'':'s')+'.' : '';
+    if(typeof XProjectFiles!=='undefined'){
+      if(sourceFile) XProjectFiles.fromFile('transcript',sourceFile,'loaded','ELAN TSV transcript imported successfully');
+      else XProjectFiles.set('transcript',{name:String(sourceName||'ELAN TSV'),path:String(sourceName||'ELAN TSV'),status:'loaded',detail:'ELAN TSV transcript imported successfully',scope:'name-only'});
+    }
     XStatus.set('Imported '+rows.length+' ELAN TSV rows from '+(sourceName||'file')+'. '+tierSummary+'.'+skippedText);
     this.autosave();
   },
@@ -16518,13 +17160,14 @@ const XFiles = {
   },
   importTsv(file){
     if(!file) return;
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing TSV transcript');
     const reader=new FileReader();
     reader.onload=e=>{
       const text=String(e.target.result||'');
       if(this.looksLikeElanTsvText(text)){
-        this.importElanTsvText(text, file.name || 'ELAN TSV');
+        this.importElanTsvText(text, file.name || 'ELAN TSV', file);
       }else{
-        this.importTsvText(text);
+        this.importTsvText(text, file);
       }
     };
     reader.readAsText(file);
@@ -16540,9 +17183,12 @@ const XFiles = {
     else return t;
     return XUtils.formatTime(s);
   },
-  importTsvText(text){
+  importTsvText(text, sourceFile){
     const lines=text.replace(/\uFEFF/g,'').split(/\n/).map(l=>l.replace(/\r$/,'')).filter(l=>l.trim());
-    if(!lines.length){alert('Empty TSV.');return;}
+    if(!lines.length){
+      if(typeof XProjectFiles!=='undefined' && sourceFile) XProjectFiles.fromFile('transcript',sourceFile,'failed','TSV file was empty');
+      alert('Empty TSV.');return;
+    }
     const split=l=>l.split('\t');
     const first=split(lines[0]);
     const heads=first.map(XUtils.normalizeHeader);
@@ -16646,6 +17292,7 @@ const XFiles = {
     XState.selectionAnchorId=XState.activeRowId;
     XTranscript.render();
     XSidePane.sync();
+    if(typeof XProjectFiles!=='undefined' && sourceFile) XProjectFiles.fromFile('transcript',sourceFile,'loaded','TSV transcript imported successfully');
     XStatus.set('Imported '+XState.rows.length+' TSV rows in chronological Start-time order.');
     this.autosave();
   },
@@ -17167,6 +17814,16 @@ const XFiles = {
 
   async autosave(writeFolderBackup, options){
     if(!XState.autosaveEnabled || XState.autosaveMinutes <= 0) return false;
+    const opts=options||{};
+    if(!writeFolderBackup && !opts.immediate && !opts.idleFinal){
+      XAutosaveCoordinator.request(()=>this.performAutosave(false,Object.assign({},opts,{coalesced:true,immediate:true})));
+      return true;
+    }
+    return this.performAutosave(writeFolderBackup,opts);
+  },
+
+  async performAutosave(writeFolderBackup, options){
+    if(!XState.autosaveEnabled || XState.autosaveMinutes <= 0) return false;
     const opts=options || {};
 
     try{
@@ -17375,6 +18032,8 @@ const XFiles = {
     if(XDom.autosaveBackupLimit){
       XDom.autosaveBackupLimit.onchange=()=>this.setAutosaveBackupLimit(XDom.autosaveBackupLimit.value);
     }
+    if(typeof XProjectSectionRollups!=='undefined') XProjectSectionRollups.bind();
+    if(typeof XProjectFiles!=='undefined') XProjectFiles.bind();
     this.configureProjectSaveUi();
     this.restoreAutosaveInterval();
   }
@@ -18946,6 +19605,9 @@ document.addEventListener('keydown',event=>{
    XTranscriptPopout
 ========================= */
 const XTranscriptPopout = {
+  syncFrame:0,
+  syncSettleTimer:null,
+  pendingSyncForce:false,
   isOpen(){
     return XState.transcriptPopout && !XState.transcriptPopout.closed;
   },
@@ -18972,11 +19634,7 @@ const XTranscriptPopout = {
       showWordCountField:XState.showWordCountField!==false,
       showUtteranceCountField:XState.showUtteranceCountField!==false,
       showSpeakerField:XState.showSpeakerField!==false,
-      childSpeakerMode:!!XState.childSpeakerMode,
-      childTierMode:!!XState.childSpeakerMode,
-      forceParentTimecodes:!!XState.forceParentTimecodes,
-      removeChildTierNumbers:!!XState.removeChildTierNumbers,
-      addChildTierAbc:!!XState.addChildTierAbc,
+      ...XTranscriptHierarchy.serializeLegacy(),
       transcriptFontSizePx:(typeof XTranscript !== 'undefined' && typeof XTranscript.validTranscriptFontSizePx === 'function') ? XTranscript.validTranscriptFontSizePx(XState.transcriptFontSizePx) : (XState.transcriptFontSizePx||15),
       transcriptMetrics:metrics,
       transcriptPopoutScale:this.normalizedScale(),
@@ -19003,8 +19661,21 @@ const XTranscriptPopout = {
 
   syncSoon(options){
     if(!this.isOpen()) return;
-    this.sync(options);
-    setTimeout(()=>this.sync(options),80);
+    this.pendingSyncForce=this.pendingSyncForce || !!(options&&options.forceRender);
+    if(!this.syncFrame){
+      const schedule=(typeof requestAnimationFrame==='function')?requestAnimationFrame:(fn=>setTimeout(fn,0));
+      this.syncFrame=schedule(()=>{
+        this.syncFrame=0;
+        this.sync({forceRender:this.pendingSyncForce});
+      });
+    }
+    if(this.syncSettleTimer) clearTimeout(this.syncSettleTimer);
+    this.syncSettleTimer=setTimeout(()=>{
+      this.syncSettleTimer=null;
+      const force=this.pendingSyncForce;
+      this.pendingSyncForce=false;
+      this.sync({forceRender:force});
+    },80);
   },
 
   focus(){
@@ -19047,6 +19718,13 @@ const XTranscriptPopout = {
       clearInterval(XState.transcriptPopoutTimer);
       XState.transcriptPopoutTimer=null;
     }
+    if(this.syncFrame){
+      if(typeof cancelAnimationFrame==='function') cancelAnimationFrame(this.syncFrame);
+      else clearTimeout(this.syncFrame);
+      this.syncFrame=0;
+    }
+    if(this.syncSettleTimer){ clearTimeout(this.syncSettleTimer); this.syncSettleTimer=null; }
+    this.pendingSyncForce=false;
     XState.popoutTranscriptCursor=null;
     this.updateMainTranscriptVisibility();
     if(typeof XButtonStates !== 'undefined') XButtonStates.updateSoon();
@@ -19460,16 +20138,8 @@ function setPopoutSpeakerStyle(rowId,updates){
   const ta=trRow ? trRow.querySelector('textarea.tr') : null;
   if(ta) applySpeakerStyleToTranscriptField(row,ta);
   updateSpeakerStyleControls(row);
-  const changedIds=retagChildRowsLocal()||[];
+  // Hierarchy is retagged once in the main window when this update arrives.
   update(row.id,'speaker',row.speaker);
-  changedIds.forEach(id=>{
-    const changedRow=rows.find(candidate=>candidate && candidate.id===id);
-    if(changedRow){
-      update(id,'start',changedRow.start||'');
-      update(id,'end',changedRow.end||'');
-      update(id,'duration',changedRow.duration||'');
-    }
-  });
   render();
 }
 
@@ -19707,43 +20377,10 @@ function transcriptTierMarker(row){
 }
 function isParentTierRow(row){return !!(row && !isCommentRow(row) && !isChildTierRow(row) && (hasSpeakerText(row) || transcriptTierMarker(row)==='parent'));}
 function retagChildRowsLocal(){
-  let previousParent=null;
-  const changedIds=[];
-  (rows||[]).forEach(row=>{
-    if(!row || isCommentRow(row)) return;
-    const info=speakerStyleInfo(row.speaker||'');
-    const marker=transcriptTierMarker(row);
-    const shouldBeChild=!!(previousParent && (marker==='child' || (marker!=='parent' && childSpeakerMode && info.italic)));
-    if(shouldBeChild){
-      const wasChild=!!(isChildTierRow(row) && row.parentRowId===previousParent.id);
-      let changed=false;
-      // Match main transcript semantics: only Force PT may overwrite a child tier's own timing.
-      if(forceParentTimecodes){
-        const nextStart=previousParent.start||'';
-        const nextEnd=previousParent.end||'';
-        if(row.start!==nextStart){ row.start=nextStart; changed=true; }
-        if(row.end!==nextEnd){ row.end=nextEnd; changed=true; }
-        const startSeconds=timeValueToSeconds(row.start);
-        const endSeconds=timeValueToSeconds(row.end);
-        const nextDuration=(Number.isFinite(startSeconds)&&Number.isFinite(endSeconds)&&endSeconds>=startSeconds) ? formatDurationSeconds(endSeconds-startSeconds) : '';
-        if(row.duration!==nextDuration){ row.duration=nextDuration; changed=true; }
-      }
-      row.lineRole='child';
-      row.parentRowId=previousParent.id;
-      row.childTier={enabled:true,source:(marker==='child'?'transcript-double-paren':'italic-speaker'),parentRowId:previousParent.id,parentSpeaker:plainText(previousParent.speaker||''),speakerText:plainText(row.speaker||''),inheritedStart:row.start||'',inheritedEnd:row.end||'',forcedTimecodes:!!forceParentTimecodes};
-      row.childLine=null;
-      if(typeof previousParent.childTiersCollapsed !== 'boolean') previousParent.childTiersCollapsed=false;
-      if(changed) changedIds.push(row.id);
-    }else{
-      row.lineRole='parent';
-      row.parentRowId='';
-      row.childTier=null;
-      row.childLine=null;
-      if(marker==='parent' || hasSpeakerText(row)) previousParent=row;
-    }
-  });
-  changedIds.forEach(refreshPopoutTimingFields);
-  return changedIds;
+  // V0.6.197: hierarchy mutation belongs to the main Gravar window.
+  // Pop-out edits are sent by message; the main transcript retags once and sends
+  // the authoritative row state back, avoiding a second copy of tier logic here.
+  return [];
 }
 
 function updatePopoutChildControls(){
@@ -20184,10 +20821,8 @@ function makeInput(row,field,placeholder){
       const ta=trRow ? trRow.querySelector('textarea.tr') : null;
       if(ta) applySpeakerStyleToTranscriptField(row,ta);
       updateSpeakerStyleControls(row);
-      retagChildRowsLocal();
     }else if(field==='transcript'){
       row.transcript=nextValue;
-      retagChildRowsLocal();
       mark();
     }
   };
@@ -20734,6 +21369,7 @@ send({type:'transcript-popout-ready'});
           }
           XSidePane.sync();
           XFiles.autosave();
+          if(['speaker','transcript'].includes(data.field)) this.syncSoon({forceRender:true});
         }
         return;
       }
@@ -21309,6 +21945,37 @@ const XDiagnostics = {
     this.add(this.exists(XDom.saveTsv), 'Save TSV control is present');
     this.add(this.exists(XDom.exportXls), 'Export XLS control is present');
     this.add(this.exists(XDom.exportRtf), 'Export RTF control is present');
+
+    this.section('Modular core and message passing');
+    this.add(typeof XBus!=='undefined' && typeof XBus.on==='function' && typeof XBus.emit==='function' && typeof XBus.emitSoon==='function' ? 'PASS' : 'FAIL',
+      'Core message bus is available', 'XBus provides direct and coalesced cross-module notifications.');
+    this.add(typeof XAutosaveCoordinator!=='undefined' && typeof XAutosaveCoordinator.request==='function' && typeof XAutosaveCoordinator.flush==='function' ? 'PASS' : 'FAIL',
+      'Autosave coordinator is available', 'Edit-triggered recovery saves are coalesced; periodic and final backups remain immediate.');
+    this.add(typeof XMediaIdentity!=='undefined' && typeof XMediaIdentity.matchesExpectedPrimary==='function' ? 'PASS' : 'FAIL',
+      'Media identity service is available', 'Same-video matching is centralized for project media reattachment.');
+    this.add(typeof XCalibration!=='undefined' && typeof XCalibration.restore==='function' && typeof XCalibration.effectiveOffsetAt==='function' ? 'PASS' : 'FAIL',
+      'Waveform calibration service is available', 'Calibration state, interpolation, migration, point undo, and persistence use one authority.');
+    this.add(typeof XTranscriptHierarchy!=='undefined' && typeof XTranscriptHierarchy.retag==='function' ? 'PASS' : 'FAIL',
+      'Transcript hierarchy service is available', 'Parent/child classification and Force PT timing inheritance use one authority.');
+    this.add(typeof XProjectState!=='undefined' && XProjectState.adapters instanceof Map ? 'PASS' : 'FAIL',
+      'Project-state adapter registry is available', typeof XProjectState!=='undefined' && XProjectState.adapters instanceof Map ? 'Registered adapters: '+Array.from(XProjectState.adapters.keys()).join(', ')+'.' : 'Project-state adapter registry missing.');
+    if(typeof XProjectState!=='undefined' && XProjectState.adapters instanceof Map){
+      ['calibration','transcriptHierarchy','drawing','videoAdjustments'].forEach(name=>{
+        this.add(XProjectState.adapters.has(name)?'PASS':'WARN', 'Project-state adapter: '+name, XProjectState.adapters.has(name)?'Registered.':'Not registered; this subsystem may still extend Files directly.');
+      });
+    }
+    if(typeof XBus!=='undefined' && typeof XBus.stats==='function'){
+      const busStats=XBus.stats();
+      this.add('INFO','Message-bus activity','Emitted '+busStats.emitted+', delivered '+busStats.delivered+', coalesced '+busStats.coalesced+'; listener types '+busStats.listenerTypes+'.');
+    }
+    if(typeof XAutosaveCoordinator!=='undefined' && typeof XAutosaveCoordinator.stats==='function'){
+      const saveStats=XAutosaveCoordinator.stats();
+      this.add('INFO','Edit-autosave coalescing','Requested '+saveStats.requested+', coalesced '+saveStats.coalesced+', flushed '+saveStats.flushed+'; delay '+saveStats.delayMs+' ms.');
+    }
+    this.add(typeof XFiles!=='undefined' && typeof XFiles.performAutosave==='function' ? 'PASS' : 'FAIL',
+      'Autosave persistence is separated from scheduling', 'XFiles.performAutosave performs persistence while XAutosaveCoordinator controls edit bursts.');
+    this.add(typeof XTranscriptPopout!=='undefined' && typeof XTranscriptPopout.syncSoon==='function' ? 'PASS' : 'INFO',
+      'Transcript pop-out synchronization API is available', 'syncSoon coalesces repeated full-transcript synchronization requests.');
 
     this.section('Video and media state');
     this.add(this.exists(XDom.video), 'Video element is present');
@@ -22033,6 +22700,7 @@ const XApp = {
   init(){
     try{
       XDom.init();
+      XCoreMessages.bind();
       XWaveform.init();
       XTranscript.ensureRow();
       XTranscript.render();
@@ -22617,16 +23285,18 @@ const XDrawing = {
     try{ XDrawing.init(); }catch(err){ console.warn('Drawing tools failed to initialize.',err); }
   };
 
-  const oldPayload=XFiles.payload.bind(XFiles);
-  XFiles.payload=function(){
-    const p=oldPayload();
-    try{
-      p.drawingObjects=(typeof XDrawing !== 'undefined') ? XDrawing.serialize() : (XState.drawingObjects||[]);
-      p.drawingFrame=XState.drawingFrame||{start:null,end:null};
-      p.drawingDefaults=XState.drawingDefaults||{shape:'ovoid',line:'solid',thickness:2,color:'yellow'};
-    }catch(err){ console.warn('Could not serialize drawing objects.',err); }
-    return p;
-  };
+  XProjectState.register('drawing',{
+    save:()=>({
+      objects:(typeof XDrawing!=='undefined')?XDrawing.serialize():(XState.drawingObjects||[]),
+      frame:XState.drawingFrame||{start:null,end:null},
+      defaults:XState.drawingDefaults||{shape:'ovoid',line:'solid',thickness:2,color:'yellow'}
+    }),
+    legacySave:saved=>({
+      drawingObjects:(saved&&saved.objects)||[],
+      drawingFrame:(saved&&saved.frame)||{start:null,end:null},
+      drawingDefaults:(saved&&saved.defaults)||{shape:'ovoid',line:'solid',thickness:2,color:'yellow'}
+    })
+  });
 
   if(typeof XWaveform !== 'undefined' && typeof XWaveform.createTranscriptLineFromDrag === 'function'){
     const oldCreate=XWaveform.createTranscriptLineFromDrag.bind(XWaveform);
@@ -25803,31 +26473,18 @@ input[type=reset],
   }
 
   if(typeof XFiles !== 'undefined'){
-    const oldPayload=XFiles.payload ? XFiles.payload.bind(XFiles) : null;
-    if(oldPayload){
-      XFiles.payload=function(){
-        if(typeof XVideo !== 'undefined' && XVideo.ensureVideoAdjustmentState) XVideo.ensureVideoAdjustmentState();
-        const payload=oldPayload();
-        payload.videoAdjustments=JSON.parse(JSON.stringify(XState.videoAdjustments||{v1:cloneDefault(),v2:cloneDefault()}));
-        payload.videoAdjustmentsLinked=!!XState.videoAdjustmentsLinked;
-        return payload;
-      };
-    }
-    const oldLoadProject=XFiles.loadProject ? XFiles.loadProject.bind(XFiles) : null;
-    if(oldLoadProject){
-      XFiles.loadProject=function(file){
-        // Use the original project loader, then migrate/display dual adjustments after its async reader finishes.
-        oldLoadProject(file);
-        setTimeout(()=>{
-          try{
-            if(typeof XVideo !== 'undefined' && XVideo.ensureVideoAdjustmentState){
-              XVideo.ensureVideoAdjustmentState();
-              XVideo.applyVideoDisplayAdjustments();
-            }
-          }catch(err){}
-        },250);
-      };
-    }
+    XProjectState.register('videoAdjustments',{
+      save:()=>{
+        if(typeof XVideo!=='undefined'&&XVideo.ensureVideoAdjustmentState) XVideo.ensureVideoAdjustmentState();
+        return {adjustments:JSON.parse(JSON.stringify(XState.videoAdjustments||{v1:cloneDefault(),v2:cloneDefault()})),linked:!!XState.videoAdjustmentsLinked};
+      },
+      legacySave:saved=>({
+        videoAdjustments:JSON.parse(JSON.stringify((saved&&saved.adjustments)||{v1:cloneDefault(),v2:cloneDefault()})),
+        videoAdjustmentsLinked:!!(saved&&saved.linked)
+      })
+    });
+    // V0.6.197: video-adjustment restore now subscribes to the real project:loaded
+    // message in XCoreMessages instead of guessing completion with a 250 ms timer.
   }
 
   if(typeof XFiles !== 'undefined'){
@@ -27689,7 +28346,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.186';
+  const EXPECTED_VERSION='0.6.198';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{

@@ -2,6 +2,90 @@
 
 > **Dating note:** Dates below are based on the Gravar development record available in this project. Where an exact release date was not recorded, the revision remains under **Date not recorded** rather than being assigned an invented date.
 
+## 2026-11-08
+
+### v0.6.198 — Default Symbols Persistence and Legacy Migration
+
+- Fixed older project JSON files replacing the expanded default Symbols palette with historical 5-row/7-row built-in palettes.
+- Added `XSymbolDefaults` as the authoritative built-in palette/migration service.
+- Fresh sessions use the 44-row expanded shared default; exact legacy built-ins migrate automatically.
+- Genuinely customized project symbol sets remain project-specific and are not overwritten.
+- Symbols project persistence now uses an `XProjectState` adapter while retaining legacy project fields for compatibility.
+
+### v0.6.197 — Modular Core Refactor and Efficiency Audit
+
+- Added a lightweight `XBus` message layer plus `XCoreMessages` application subscriptions.
+- Centralized media identity/waveform calibration in `XMediaIdentity` and `XCalibration`.
+- Centralized parent/child-tier and Force PT rules in `XTranscriptHierarchy`; the main transcript is now the hierarchy mutation authority for the pop-out as well.
+- Added `XProjectState` adapters for extensible, one-pass module serialization while preserving legacy project fields.
+- Removed Drawing/Video Adjustment `XFiles.payload()` monkey-patches and replaced the 250-ms project-load video-adjustment timer with the explicit `project:loaded` message.
+- Coalesced edit-triggered recovery autosaves and transcript-pop-out full-payload synchronization to reduce redundant high-frequency work.
+- Added modular-core checks and message/autosave metrics to Diagnostics.
+- Added a detailed architecture audit to the Current Resources package; large UI modules remain scheduled for later incremental refactoring rather than being rewritten in this release.
+
+### v0.6.196 — Play Cursor Modifier Gating
+- Play button uses the normal pointer cursor during ordinary hover.
+- Up/down playback-speed cursor appears only while Command is held on macOS (Ctrl elsewhere).
+- Cursor state resets on modifier release, pointer exit, and window blur.
+
+
+### v0.6.195 — Expanded Shared Symbols Default Palette
+
+- Replaced the small default Symbols palette with the newly supplied expanded shared set.
+- The built-in default now contains 37 symbols plus 7 section headers: Onset/Offset/Talk, Arrows, Bracket, Triangles & Dots, Square, Letters, and Lines.
+- Preserved IDs, descriptions, ordering, sections, and active-symbol selection from the supplied symbol-set JSON.
+- Project-specific and manually imported symbol sets still override these defaults normally.
+
+### v0.6.194 — Shared Symbols Default Palette
+
+- Loaded the supplied shared Gravar symbol-set JSON as the built-in default Symbols palette.
+- Defaults now include `(.)`, `(0.0)`, `[`, `]`, `=`, `↑`, and `↓`, preserving the supplied IDs/descriptions and active symbol.
+- Saved/project-specific and manually imported Symbols still override the defaults normally.
+- Added the shared symbol-set JSON to the Current Resources package.
+
+### v0.6.193 — Project Files Order and Persistent Project Name
+
+- Reordered Files → Project to **Project → Codes & Symbols → Project files**.
+- Project files is now its own collapsed rollup below Codes & Symbols.
+- Project name is a single persistent field at the bottom of the Files pane and remains visible across Project, Import, Export, Diag, and Auto.
+- Removed redundant/nested Project-name placement while preserving all existing Project-files path/status functions.
+
+### v0.6.192 — Project Submenu Rollups
+
+- Preserved the v0.6.191 horizontal Files tabs.
+- Added collapsed **Project** and **Codes & Symbols** rollups inside the Project tab.
+- Project name remains last inside the Project rollup; the nested Project-files path/status rollup is preserved.
+
+### v0.6.191 — Restore Files Tabs and Project Name Order
+
+- Reverted Files from the v0.6.190 vertical accordion back to the established v0.6.189 tabbed submenu layout.
+- Project name now appears at the bottom of the Project submenu, after the other Project controls.
+- Preserved the collapsed Project-files status/path viewer from v0.6.189.
+
+### v0.6.190 — Collapsible Files Submenus
+
+- Project, Import, Export, Diagnostics, and Autosave are now compact collapsed rollups in the Files pane.
+- No Files submenu opens by default; selecting one opens it and closes the others, and selecting it again rolls it closed.
+- Autosave is permanently ordered last.
+- Project name now stays inside the Project rollup; the nested Project-files status rollup remains collapsed by default.
+
+### v0.6.189 — Project Files Rollup and Clickable Path Viewer
+
+- Project files is collapsed by default and expands only when its header is selected.
+- Replaced the ambiguous selector with an explicit **Path: Last 3 / Path: Full** toggle that visibly identifies the current mode.
+- Clicking any file pathname opens a wrapped, selectable full-width pathname viewer below the list.
+- The viewer updates immediately when the path mode changes.
+- Preserves honest browser path reporting when macOS absolute paths are unavailable.
+
+### v0.6.188 — Project File Locations and Load Status
+
+- Added a Project-files status block under Files → Project for Project JSON, transcript source, V1, V2, and audio.
+- Shows loaded/saved, referenced, missing/failed, or none status for each resource.
+- Added selectable **Last 3 levels** and **Full** path views.
+- Full reports the fullest path available to Gravar; browser-hidden macOS absolute paths are clearly identified rather than guessed.
+- Reconnect, project restore, manual media loads, and DOTE/TSV/ELAN imports now update the status display.
+- Saved path metadata and the chosen display mode persist in project JSON, while cross-project stale paths are cleared on load.
+
 ## 2026-10-22
 
 ### v0.6.187 — Project Folder Reconnect and Media Recovery
