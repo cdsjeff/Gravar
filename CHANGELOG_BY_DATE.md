@@ -2,6 +2,24 @@
 
 > **Dating note:** Dates below are based on the Gravar development record available in this project. Where an exact release date was not recorded, the revision remains under **Date not recorded** rather than being assigned an invented date.
 
+## 2026-11-12
+
+### v0.6.200 — Long-Video Waveform Calibration
+
+- Fixed saved waveform calibration becoming effectively capped around long-recording drift because persisted Point offsets inherited the temporary ±4-second Wave± limit.
+- Temporary Wave± nudging remains ±4 seconds, while saved Point corrections can now accumulate beyond that range.
+- Added >30-minute calibration diagnostics and verified points/corrections through 60 minutes survive interpolation and project serialization/restoration.
+
+## 2026-11-11
+
+### v0.6.199 — Verified Manual Save Location
+
+- Manual Save now opens the Project-folder chooser before writing in browsers with direct folder access.
+- Cancelling the chooser cancels the save; Gravar no longer silently writes a manual save into a previously remembered folder.
+- The selected folder becomes the active Project folder for the save and subsequent autosaves/exports.
+- Autosave remains automatic and does not open a picker.
+- Safari continues to use its browser-controlled Save As/download workflow.
+
 ## 2026-11-08
 
 ### v0.6.198 — Default Symbols Persistence and Legacy Migration

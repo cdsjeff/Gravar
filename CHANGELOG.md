@@ -1,5 +1,30 @@
 # Gravar Changelog
 
+## v0.6.200 — 2026-11-12 — Long-Video Waveform Calibration
+
+- Fixed long-recording waveform calibration appearing to stop around the 30-minute mark.
+- Root cause: saved calibration Point corrections were passed through the same **±4.0-second clamp** used for the temporary Wave± nudge. Once cumulative drift approached that ceiling, later Points could no longer add effective correction.
+- Separated temporary interactive nudging from persisted calibration: **Wave± remains limited to ±4.0 seconds**, while saved Absolute/Point calibration offsets can accumulate beyond ±4 seconds.
+- Saved calibration points beyond 30 minutes now retain their full time and correction through normalization, interpolation, project serialization, restore, and Undo.
+- Added long-duration Diagnostics cases at approximately **31:40, 35:00, 45:00, and 60:00**, including saved corrections greater than 4 seconds.
+- Calibration summaries now report the last saved Point time and correction to make long-recording verification easier.
+- Updated Waveform Help to explain that the ±4-second limit applies only to the temporary Wave± nudge, not to cumulative saved Point correction.
+- Preserved the v0.6.199 verified manual-save workflow, expanded default Symbols palette, and modular/message-passing architecture.
+- Both embedded JavaScript blocks passed syntax validation; targeted calibration service tests passed through 60 minutes, including serialize/restore of an 8.4-second saved correction.
+
+## v0.6.199 — 2026-11-11 — Verified Manual Save Location
+
+- Changed **manual Project Save** so browsers with direct folder access always open the Project-folder chooser before any project JSON is written.
+- The folder chooser opens on the currently active Project folder when possible, allowing the user to verify or change the target location explicitly on every manual save.
+- The folder selected in that Save operation becomes Gravar's active Project folder for the project and is used for subsequent autosaves, ordinary exports, and `Old_files` handling.
+- Cancelling the folder chooser cancels the manual save completely; Gravar does not silently write to the previously remembered folder.
+- If a different Project folder is selected, V1 copy tracking is reset so the loaded primary video can be copied into the newly verified folder when appropriate.
+- **Autosave remains non-interactive** and never opens a folder picker.
+- Updated the Save button to **Save…** and revised Help/tooltips to explain that manual Save verifies the target folder first.
+- Added a Diagnostics check for the manual-save target-folder verification path.
+- Safari retains its browser-controlled **Save As/download** workflow because Safari does not provide Gravar the same direct directory-picker API.
+- Updated build metadata and release description to v0.6.199; both embedded JavaScript blocks pass syntax validation.
+
 ## v0.6.198 — 2026-11-08 — Default Symbols Persistence and Legacy Migration
 
 - Fixed a regression in which loading an older project JSON could replace the expanded v0.6.195 default Symbols palette with that project's older built-in 5-row or 7-row palette.
