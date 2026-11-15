@@ -1,5 +1,19 @@
 # Gravar Changelog
 
+## v0.6.201 — 2026-11-13 — Option-Hover Web Tips
+
+- Changed Gravar's contextual web tips so **ordinary hover stays quiet**.
+- On macOS, hold **Option while hovering** to reveal the existing contextual help text; on non-Mac systems use **Alt + hover**.
+- If the pointer is already over a tipped control, pressing Option/Alt reveals the tip immediately; releasing the modifier, moving away, or switching away from the window hides it.
+- Added a centralized **`XWebTips`** service rather than implementing the gesture separately in individual controls.
+- Native `title` tooltips are suspended only while the pointer is over the relevant element, preserving Gravar's existing title-based metadata and dynamic help text outside the hover interval.
+- Applied the same Option/Alt-hover convention to the main application, Video pop-out, and Transcript pop-out.
+- Converted the upper-right build badge from its separate always-on hover tooltip to the shared `XWebTips` behavior.
+- Added a **Web tips** section to Help/User Manual and updated pop-out Help wording to document the new gesture.
+- Added a Diagnostics check confirming the web-tip service is installed.
+- Preserved v0.6.200 long-video calibration, v0.6.199 verified manual Save location, expanded default Symbols, and the modular/message-passing architecture.
+- Both embedded JavaScript blocks passed syntax validation.
+
 ## v0.6.200 — 2026-11-12 — Long-Video Waveform Calibration
 
 - Fixed long-recording waveform calibration appearing to stop around the 30-minute mark.

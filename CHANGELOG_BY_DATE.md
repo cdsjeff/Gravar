@@ -2,6 +2,15 @@
 
 > **Dating note:** Dates below are based on the Gravar development record available in this project. Where an exact release date was not recorded, the revision remains under **Date not recorded** rather than being assigned an invented date.
 
+## 2026-11-13
+
+### v0.6.201 — Option-Hover Web Tips
+
+- Ordinary hover no longer opens contextual web tips.
+- Hold **Option + hover** on macOS, or **Alt + hover** on non-Mac systems, to reveal a tip; release the modifier or move away to hide it.
+- Added centralized `XWebTips` handling across the main app, Video pop-out, Transcript pop-out, and build badge.
+- Added the gesture to Help/User Manual and Diagnostics.
+
 ## 2026-11-12
 
 ### v0.6.200 — Long-Video Waveform Calibration

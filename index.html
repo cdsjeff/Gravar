@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.200 — Long-Video Calibration
+Gravar v0.6.201 — Option-Hover Web Tips
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -20,6 +20,7 @@ Current release highlights:
 - Built-in Symbols now load the expanded shared Gravar symbol set with section headers for onset/offset/talk, arrows, brackets, triangles & dots, squares, letters, and lines.
 - Play button cursor is now a normal pointer unless the playback-speed modifier is actively held (Command on macOS; Ctrl on non-Mac platforms).
 - Manual Save now always opens the Project-folder selection window first in Chrome/Edge so the save location can be verified; autosave remains automatic and silent.
+- Contextual web tips now require Option + hover on macOS (Alt + hover on non-Mac systems); ordinary hover stays quiet in the main app and pop-outs.
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
 
 Core services:
@@ -46,7 +47,7 @@ Primary UI/application modules:
 - XScrollSync
 - XApp
 
-Architecture note for v0.6.200:
+Architecture note for v0.6.201:
 - Cross-cutting rules are being moved from large UI modules into small single-responsibility services.
 - New cross-module behavior should prefer XBus messages or explicit service APIs over direct mutation of another UI module.
 - Project-state extensions should register with XProjectState rather than monkey-patching XFiles.payload().
@@ -55,7 +56,7 @@ Architecture note for v0.6.200:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.200 Standalone Web</title>
+<title>Gravar — Version 0.6.201 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -3154,7 +3155,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.200 — Standalone Web. Long-video waveform calibration now preserves saved Point corrections beyond the temporary ±4-second Wave± nudge range, so calibration can continue reliably beyond 30 minutes.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.201 — Standalone Web. Contextual web tips now require Option + hover on macOS (Alt + hover on non-Mac systems), keeping ordinary hover quiet while preserving the existing help text.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3174,7 +3175,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.200 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.201 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3186,6 +3187,8 @@ input[type=reset],
 <li>Save the project JSON often. On Chrome/Edge, each manual Save opens the Project-folder chooser before writing so you can verify the location. Autosaves remain automatic and do not open a picker. The saved project includes the active Code, Symbols, and Group palettes, styled code markers, group ranges, comments, project note, transcript styles, and child-line tags.</li>
 <li>Use <strong>Files → Export</strong> for TSV, XLS, ELAN, RTF, Project Note, Comments, and Transcript+Comment. Use <strong>Video → V-Clip</strong> for start/end-time JSON specifications for external clip makers.</li>
 </ol>
+<h3>Web tips</h3>
+<p><strong>Option + hover</strong> shows contextual web tips on macOS. Ordinary hover does not open a tip. If the pointer is already over a control, press and hold <strong>Option</strong> to show its tip immediately; release Option or move the pointer away to hide it. On non-Mac systems, use <strong>Alt + hover</strong>. This convention applies to buttons, fields, transcript/timing controls, waveform/video controls, and the Video and Transcript pop-out windows. It does not change Command/Ctrl click or drag shortcuts.</p>
 <h3>Workspace map</h3>
 <ul>
 <li><strong>Left pane:</strong> Files, Wave, Video, Transcript, About, Comment, and Help menus.</li>
@@ -3216,7 +3219,7 @@ input[type=reset],
 <li><strong>Video Pop:</strong> toggles the muted synchronized video display on and off. Audio and timing remain controlled by the main app.</li>
 <li><strong>Stack:</strong> stacks V1 above V2 in both the main video pane and the video pop-out. When off, V1 and V2 display side-by-side.</li>
 <li><strong>Running-time strip:</strong> the video pop-out has a bottom strip showing current time, progress, and total duration.</li>
-<li><strong>Video gestures:</strong> Command/Ctrl-drag zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan. Tooltips in the video pop-out describe these gestures for V1, V2, and the time strip.</li>
+<li><strong>Video gestures:</strong> Command/Ctrl-drag zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan. Hold Option (Alt on non-Mac systems) while hovering in the video pop-out to show web tips describing these gestures for V1, V2, controls, and the time strip.</li>
 </ul>
 <h3>Waveform and calibration</h3>
 <ul>
@@ -3723,6 +3726,7 @@ input[type=reset],
 /* Gravar V0.6.198: makes the expanded shared Symbols palette a durable default, migrates exact legacy built-in palettes on project load, preserves genuinely customized palettes, and moves Symbols project persistence into an XProjectState adapter. */
 /* Gravar V0.6.199: manual Save always opens the Project-folder picker first on browsers with direct folder access, making the target location explicit before writing project JSON while leaving autosave non-interactive. */
 /* Gravar V0.6.200: separates the temporary Wave± nudge clamp (±4 sec) from saved calibration offsets so long-video Point corrections can accumulate beyond ±4 sec; adds >30-minute calibration diagnostics. */
+/* Gravar V0.6.201: gates contextual web tips behind Option/Alt + hover, suppresses native hover titles while the pointer is over a tipped control, and applies the same behavior to video/transcript pop-outs. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
 /* Gravar V0.6.173: adds an Electron desktop file-system bridge, aligns the initial Project folder to the first user-selected project/media/transcript file, preserves Command-M for Merge, and attaches media before optional browser recovery storage so storage cannot block playback. The same HTML remains browser-compatible. */
@@ -3732,9 +3736,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.200',
+  version: '0.6.201',
   label: 'Standalone Web',
-  description: 'This build fixes long-video waveform calibration by separating the temporary Wave± nudge range from saved calibration offsets. Point corrections can now accumulate beyond ±4 seconds and remain effective well past 30 minutes, while the temporary interactive nudge remains safely limited to ±4 seconds. Manual Save location verification, expanded default Symbols, and the modular core architecture are preserved.',
+  description: 'This build makes contextual web tips deliberate: on macOS hold Option while hovering to show a tip (Alt on non-Mac systems). Ordinary hover remains quiet, and releasing the modifier or moving away hides the tip. The same rule applies in the main app and pop-outs. Long-video calibration, verified manual Save location, expanded default Symbols, and the modular core architecture are preserved.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -4880,6 +4884,198 @@ const XCoreMessages = {
     });
   }
 };
+
+/* =========================
+   XWebTips
+   Option/Alt + hover contextual tips.
+   Native title tooltips are suspended only while the pointer is over
+   the relevant element, so ordinary hover stays quiet without changing
+   the existing title-based help metadata used elsewhere in Gravar.
+========================= */
+const XWebTips = {
+  states:new WeakMap(),
+
+  install(doc){
+    doc=doc || document;
+    if(!doc || this.states.has(doc)) return;
+    const win=doc.defaultView || window;
+    const state={
+      doc,
+      win,
+      tip:null,
+      current:null,
+      currentTitle:'',
+      altDown:false,
+      x:0,
+      y:0,
+      observer:null
+    };
+    this.states.set(doc,state);
+
+    if(!doc.getElementById('gravarWebTipStyle')){
+      const style=doc.createElement('style');
+      style.id='gravarWebTipStyle';
+      style.textContent=`
+        .gravar-webtip{
+          position:fixed;
+          z-index:2147483647;
+          pointer-events:none;
+          max-width:min(390px,calc(100vw - 24px));
+          padding:7px 9px;
+          border:1px solid rgba(148,163,184,.9);
+          border-radius:8px;
+          background:rgba(15,23,42,.96);
+          color:#f8fafc;
+          box-shadow:0 8px 22px rgba(15,23,42,.28);
+          font:12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+          white-space:pre-wrap;
+          overflow-wrap:anywhere;
+        }
+        .gravar-webtip.hidden{display:none!important}
+      `;
+      (doc.head || doc.documentElement).appendChild(style);
+    }
+
+    const ensureTip=()=>{
+      if(state.tip && doc.body && doc.body.contains(state.tip)) return state.tip;
+      if(!doc.body) return null;
+      const tip=doc.createElement('div');
+      tip.className='gravar-webtip hidden';
+      tip.setAttribute('role','tooltip');
+      tip.setAttribute('aria-live','polite');
+      doc.body.appendChild(tip);
+      state.tip=tip;
+      return tip;
+    };
+
+    const targetFor=node=>{
+      if(!node || !node.closest) return null;
+      return node.closest('[title],[data-gravar-webtip]');
+    };
+
+    const position=()=>{
+      const tip=ensureTip();
+      if(!tip || tip.classList.contains('hidden')) return;
+      const margin=10;
+      let left=state.x+12;
+      let top=state.y+14;
+      const rect=tip.getBoundingClientRect();
+      if(left+rect.width+margin>win.innerWidth) left=Math.max(margin,state.x-rect.width-12);
+      if(top+rect.height+margin>win.innerHeight) top=Math.max(margin,state.y-rect.height-12);
+      tip.style.left=Math.max(margin,left)+'px';
+      tip.style.top=Math.max(margin,top)+'px';
+    };
+
+    const hide=()=>{
+      if(state.tip) state.tip.classList.add('hidden');
+    };
+
+    const show=()=>{
+      if(!state.current || !state.altDown) return hide();
+      const text=String(state.currentTitle || state.current.dataset.gravarWebtip || '').trim();
+      if(!text) return hide();
+      const tip=ensureTip();
+      if(!tip) return;
+      tip.textContent=text;
+      tip.classList.remove('hidden');
+      position();
+    };
+
+    const restoreCurrent=()=>{
+      const el=state.current;
+      const title=state.currentTitle;
+      state.current=null;
+      state.currentTitle='';
+      hide();
+      if(!el) return;
+      try{
+        delete el.dataset.gravarWebtip;
+        if(title) el.setAttribute('title',title);
+        else el.removeAttribute('title');
+      }catch(err){}
+    };
+
+    const enterTarget=(el,event)=>{
+      if(!el) return;
+      if(state.current && state.current!==el) restoreCurrent();
+      state.current=el;
+      const raw=el.hasAttribute('title') ? el.getAttribute('title') : (el.dataset.gravarWebtip || '');
+      state.currentTitle=String(raw || '');
+      if(state.currentTitle) el.dataset.gravarWebtip=state.currentTitle;
+      if(el.hasAttribute('title')) el.removeAttribute('title');
+      state.altDown=!!(event && event.altKey);
+      if(state.altDown) show();
+      else hide();
+    };
+
+    doc.addEventListener('pointerover',event=>{
+      state.x=Number(event.clientX)||0;
+      state.y=Number(event.clientY)||0;
+      const target=targetFor(event.target);
+      if(target) enterTarget(target,event);
+    },true);
+
+    doc.addEventListener('pointermove',event=>{
+      state.x=Number(event.clientX)||0;
+      state.y=Number(event.clientY)||0;
+      state.altDown=!!event.altKey;
+      if(state.altDown && state.current) show();
+      else hide();
+    },true);
+
+    doc.addEventListener('pointerout',event=>{
+      if(!state.current) return;
+      const related=event.relatedTarget;
+      if(related && state.current.contains && state.current.contains(related)) return;
+      const relatedTarget=targetFor(related);
+      if(relatedTarget===state.current) return;
+      restoreCurrent();
+    },true);
+
+    win.addEventListener('keydown',event=>{
+      if(event.key==='Alt'){
+        state.altDown=true;
+        show();
+      }
+    },true);
+
+    win.addEventListener('keyup',event=>{
+      if(event.key==='Alt'){
+        state.altDown=false;
+        hide();
+      }
+    },true);
+
+    win.addEventListener('blur',()=>{
+      state.altDown=false;
+      hide();
+    });
+
+    state.observer=new win.MutationObserver(records=>{
+      records.forEach(record=>{
+        const el=record.target;
+        if(el!==state.current || record.attributeName!=='title' || !el.hasAttribute('title')) return;
+        const next=String(el.getAttribute('title')||'');
+        state.currentTitle=next;
+        if(next) el.dataset.gravarWebtip=next;
+        else delete el.dataset.gravarWebtip;
+        el.removeAttribute('title');
+        if(state.altDown) show();
+      });
+    });
+    if(doc.documentElement){
+      state.observer.observe(doc.documentElement,{subtree:true,attributes:true,attributeFilter:['title']});
+    }
+  },
+
+  bind(){
+    this.install(document);
+    if(typeof window!=='undefined') window.XWebTips=this;
+  }
+};
+
+if(typeof window!=='undefined') window.XWebTips=XWebTips;
+
 
 /* =========================
    XStatus
@@ -13904,12 +14100,12 @@ const XPaneHelp = {
       talkaction: {title:'Code pane help', preamble:'The Code pane assigns row-level analytic codes to the active transcript line. It is designed for rapid coding during playback, Follow, or segment-review workflows.', items:[['Code buttons','Click a code to toggle it on or off for the active transcript row. Selected codes are highlighted and stored in the row-level Code field. On transcript-row Code icons, plain click shows the Code name, Command/Ctrl-click replaces or deletes the clicked Code, and Command/Ctrl-Option/Alt-click adds another Code from the palette.'],['Follow coordination','When Follow is on, the active row can shift with the currently followed transcript line, so the highlighted Code buttons reflect that line.'],['Transcript playback','Command-click / Ctrl-click a row plays the active row or selected row range once. Command-Option-click / Ctrl-Alt-click repeats the active row or selected row range until Escape or Shift-Space.'],['Section headers','Outside edit mode, click any section header to hide or show only the Code buttons belonging to that section. The triangle shows whether the section is expanded or collapsed, and each section remembers its state in the project.'],['Edit pencil','Toggle code-edit mode. Edit mode temporarily reveals all Code buttons so you can add codes before/after the selected code, add section dividers, delete items, and drag-reorder the palette.'],['Import/export codes','Use Files → Project to import or export reusable Code sets without changing existing row-level codes.']]},
       notes: {title:'Line Note pane help', preamble:'The Line Note pane stores line-level analytic comments for the active transcript row. Command/Ctrl-/ opens the active line note in a popdown below the transcript row. Line Notes can use rich-text formatting for project save and RTF export, but they are not exported in TSV or ELAN.', items:[['Editing comments','Click in the Line Note area and type. The comment belongs to the currently active transcript row.'],['Rich-text formatting','Use the Transcript pane formatting tools for bold, italic, color, and clear formatting while the Line Note field is active.'],['Autosave/project save','Line Note formatting is preserved in autosave and project JSON.'],['RTF export','Transcript RTF export preserves Line Note formatting. TSV and ELAN exports omit Line Notes.'],['Follow caution','If Follow is on during playback, the active row may change. Pause or use segment hold when writing detailed comments for a specific row.']]},
       log: {title:'Project Note pane help', preamble:'The Project Note pane is a project-level rich-text notebook. It is not tied to a transcript line and is not included in TSV or ELAN exports. Command/Ctrl-Option/Alt-\ opens the same Project Note in a larger red-highlighted popdown below the active transcript row; the prior Command/Ctrl-Shift-\ shortcut is also accepted. Esc closes it and writes the content back to this pane.', items:[['Editing the Project Note','Click in the Project Note area and type general session notes, project decisions, calibration observations, or analytic memos.'],['Fr-Clip links','Fr-Clip captures add a clickable project-file link to the Project Note. Clicking the link asks Gravar to open that saved frame from the current Project folder.'],['Rich-text formatting','Use the Transcript pane formatting tools for bold, italic, color, and clear formatting while the Project Note field is active.'],['Project save/autosave','The Project Note is preserved in Gravar project JSON and autosaves.'],['Export Project Note','Use Files → Export Project Note to save the Project Note as a separate RTF file.'],['Not row-linked','Changing the active transcript row does not change the Project Note content.']]},
-      popouts: {title:'Pop pane help', preamble:'The Pop pane gathers detached-window controls in one place so Video and Transcript panes can stay focused on their own editing/display tools.', items:[['Video Pop','Toggle the muted synchronized video pop-out window on/off. When Load V2 is active, the pop-out can show videos side by side or stacked V1 above V2. The bottom strip shows current time, progress, and duration.'],['Text Pop / Front / Close','Open, bring forward, or close the editable transcript pop-out window.'],['Main-window placeholder','When the video pop-out is open, the main video area shows a lightweight placeholder to reduce rendering pressure.'],['Shortcuts and tooltips','The video pop-out supports Shift-Space, Command/Ctrl arrow scrubbing, Command/Ctrl-Shift arrow jumps, fullscreen with F, and hover tooltips on V1, V2, the stage, and the running-time strip.']],},
+      popouts: {title:'Pop pane help', preamble:'The Pop pane gathers detached-window controls in one place so Video and Transcript panes can stay focused on their own editing/display tools.', items:[['Video Pop','Toggle the muted synchronized video pop-out window on/off. When Load V2 is active, the pop-out can show videos side by side or stacked V1 above V2. The bottom strip shows current time, progress, and duration.'],['Text Pop / Front / Close','Open, bring forward, or close the editable transcript pop-out window.'],['Main-window placeholder','When the video pop-out is open, the main video area shows a lightweight placeholder to reduce rendering pressure.'],['Shortcuts and web tips','The video pop-out supports Shift-Space, Command/Ctrl arrow scrubbing, Command/Ctrl-Shift arrow jumps, fullscreen with F, and Option + hover web tips (Alt + hover on non-Mac systems) on V1, V2, controls, the stage, and the running-time strip.']],},
       cmt: {title:'Comment pane help', preamble:'The Comment pane manages analytic comment rows. Comment rows are light-red anchors saved in the project but excluded from Follow, Dur, LineDur, and normal line numbering. Use Add comment for a single comment row below the active transcript row, or generate interval anchors across the loaded media.', items:[['Add comment','Adds one Comment row below the selected/active transcript row. The row uses the current media time when available, otherwise it falls back to the selected row time, and opens the Line Note pane for immediate note entry.'],['Every 1m / 5m / 10m','Generates Comment anchors at regular intervals across the loaded media duration without duplicating existing Comment rows at the same times.'],['Show / Hide','Hide removes Comment rows from view without deleting them or their Line Notes; Show restores them.'],['Bottom placement','Comment controls are kept at the bottom of this pane so they remain in a consistent location.']]},
       groups: {title:'Group pane help', preamble:'The Group pane creates span-level visual indicators using vertical colored hairlines in the left transcript gutter. Groups are useful for marking analytic stretches that may span one or more transcript rows.', items:[['Group buttons','Select one or more transcript rows, then click a Group button to apply that Group. A colored hairline appears in the left gutter.'],['Toggle/removal','Click the same Group button on already marked selected rows to remove that Group hairline from those rows. Each Group can produce only one hairline per row.'],['Stable slots','The same Group keeps the same horizontal slot, so discontinuous stretches line up vertically.'],['Expandable gutter','The group gutter stays compact for up to three hairlines and expands when more Group slots are needed.'],['Tooltips','Hover over a hairline to see the Group label.'],['Edit mode','Use the pencil to add, delete, reorder, and color Group buttons and section headings. Group buttons inherit the previous section color unless individually colored.']]},
       symbols: {title:'Symbols pane help', preamble:'The Symbols pane provides a reusable transcription-symbol palette. In normal mode, clicking a symbol inserts it into the active transcript cursor. In edit mode, the palette itself can be modified.', items:[['Insert mode','With the pencil off, click a symbol to insert it into the active Transcript field or transcript pop-out cursor.'],['Edit mode','Click the pencil to edit symbols and descriptions. Use +before, +after, +section, and delete to manage the list.'],['Drag reorder','In edit mode, drag symbol rows or section dividers to reorganize the palette.'],['Sections','Section divider rows help group related notation symbols.'],['Pop-out support','Symbol insertion can target the transcript pop-out when its cursor is the most recent active transcript cursor.'],['Import/export symbols','Use Files → Project to import or export reusable Symbols sets. Projects still save their current symbol set, but reusable sets can live outside any one project.']]},
       about: {title:'About pane help', preamble:'The About pane gives a brief description of Gravar and its purpose as a local browser-based workspace for video transcription and interaction analysis.', items:[['Purpose','Use this pane for orientation to the app and its overall design.'],['Local operation','Gravar runs as a single HTML file in the browser; project data is saved separately.'],['Related panes','Use Files for project operations, Wave for waveform alignment/display, Video for visual display tools, and Transcript for formatting/pop-out controls.']]},
-      help: {title:'Help pane help', preamble:'The Help pane contains the longer built-in user manual and shortcut reference. The small question mark buttons provide shorter contextual help for each pane.', items:[['Download User Manual','Downloads the Help/User Manual as a formatted HTML file that preserves headings, lists, spacing, shortcut organization, and the current feature guide.'],['Basic workflow','Summarizes the ordinary sequence of loading video, choosing a project folder, adding transcript rows, aligning timing, and saving/exporting.'],['Shortcut sections','Groups shortcuts by where they are used: pane/workspace controls, transcript area, video screen/waveform, and pop-outs.'],['Pane-level ? buttons','Click the pale-red question mark in any pane to toggle a short pane-specific help overlay over the video area.']]}
+      help: {title:'Help pane help', preamble:'The Help pane contains the longer built-in user manual and shortcut reference. The small question mark buttons provide shorter contextual help for each pane.', items:[['Download User Manual','Downloads the Help/User Manual as a formatted HTML file that preserves headings, lists, spacing, shortcut organization, and the current feature guide.'],['Basic workflow','Summarizes the ordinary sequence of loading video, choosing a project folder, adding transcript rows, aligning timing, and saving/exporting.'],['Shortcut sections','Groups shortcuts by where they are used: pane/workspace controls, transcript area, video screen/waveform, and pop-outs.'],['Pane-level ? buttons','Click the pale-red question mark in any pane to toggle a short pane-specific help overlay over the video area.'],['Web tips','Hold Option while hovering on macOS (Alt on non-Mac systems) to show contextual web tips. Ordinary hover stays quiet; release the modifier or move away to hide the tip.']]}
     };
   },
 
@@ -18500,6 +18696,7 @@ video.scrubbing{cursor:ew-resize}
   <span class="time-label end" id="popDuration" title="Total media duration">00:00.0</span>
 </div>
 <script>
+try{if(window.opener && window.opener.XWebTips) window.opener.XWebTips.install(document);}catch(err){}
 const popStage=document.getElementById('popStage');
 const popHint=document.getElementById('popHint');
 const popVideo=document.getElementById('popVideo');
@@ -20071,6 +20268,7 @@ input[data-field="speaker"]{padding-top:calc(var(--transcript-pad-top,5px) + 4px
 <div class="top" title="Transcript pop-out toolbar. Use these controls for Speaker style, child-tier behavior, chronological sort, and refresh from main Gravar."><strong title="Editable transcript pop-out synchronized with the main transcript">Gravar Transcript</strong><span class="popout-tools"><span class="speaker-style-mini" title="Style the focused Speaker field in this pop-out. Transcript text inherits the Speaker style in both windows."><span>Speaker</span><button id="speakerItalicPopout" title="Toggle italic for the focused Speaker field. Italic Speaker rows become child tiers; toggling italic turns Child tiers on if needed.">I</button><select id="speakerColorPopout" title="Set color for the focused Speaker field"><option value="">color</option><option value="green">green</option><option value="blue">blue</option><option value="red">red</option><option value="purple">purple</option><option value="orange">orange</option><option value="gray">gray</option></select></span><span class="child-tier-mini" title="Parent/child tier controls synced with the main Transcript pane."><label title="When checked, italicized Speaker rows and transcript rows beginning with double parentheses can become child tiers under the just-prior parent tier."><input id="childTierModePopout" type="checkbox"> Child tiers</label><label title="When checked, copy and enforce parent-tier Start/Stop/Dur values on all child tiers under that parent tier, including double-parentheses child tiers. When unchecked, child tiers keep their own timecodes."><input id="forceParentTimecodesPopout" type="checkbox"> Force PT</label></span><button id="sortStartPopout" title="Sort transcript rows chronologically by Start time">sort-Start</button><button id="refreshPopout" title="Refresh this pop-out from the main transcript state">Refresh</button><span title="Edits in this pop-out update the main transcript, and main-window edits sync back here.">Edits sync with main window</span></span></div>
 <div class="wrap" title="Transcript pop-out workspace. Timing fields are on the left; transcript text, group hairlines, code markers, and note markers are on the right."><div class="timing" id="timeRows" title="Timing fields. Command/Ctrl-click Start/End to seek; Command/Ctrl-Option/Alt-click Start/End to insert current time."></div><div class="transcripts" id="transcriptRows" title="Transcript rows. Command/Ctrl-click row text to play the row segment; drag line numbers to reorder; group hairlines and code markers show row annotations."></div></div>
 <script>
+try{if(window.opener && window.opener.XWebTips) window.opener.XWebTips.install(document);}catch(err){}
 let rows=[];
 let activeRowId=null;
 let selectedRowIds=new Set();
@@ -22033,6 +22231,8 @@ const XDiagnostics = {
     this.section('Modular core and message passing');
     this.add(typeof XBus!=='undefined' && typeof XBus.on==='function' && typeof XBus.emit==='function' && typeof XBus.emitSoon==='function' ? 'PASS' : 'FAIL',
       'Core message bus is available', 'XBus provides direct and coalesced cross-module notifications.');
+    this.add(typeof XWebTips!=='undefined' && typeof XWebTips.install==='function' && typeof XWebTips.bind==='function' ? 'PASS' : 'FAIL',
+      'Option/Alt-hover web-tip service is available', 'Ordinary hover suppresses native title popups while Option/Alt + hover reveals the existing contextual help text in the main app and installed pop-outs.');
     this.add(typeof XAutosaveCoordinator!=='undefined' && typeof XAutosaveCoordinator.request==='function' && typeof XAutosaveCoordinator.flush==='function' ? 'PASS' : 'FAIL',
       'Autosave coordinator is available', 'Edit-triggered recovery saves are coalesced; periodic and final backups remain immediate.');
     this.add(typeof XMediaIdentity!=='undefined' && typeof XMediaIdentity.matchesExpectedPrimary==='function' ? 'PASS' : 'FAIL',
@@ -22785,6 +22985,7 @@ const XApp = {
   init(){
     try{
       XDom.init();
+      XWebTips.bind();
       XCoreMessages.bind();
       XWaveform.init();
       XTranscript.ensureRow();
@@ -24199,7 +24400,7 @@ const XDrawing = {
 
 
 
-/* V0.6.134: persistent upper-right build badge with hover tooltip. */
+/* V0.6.201: persistent upper-right build badge uses the global Option/Alt-hover web-tip system. */
 (function(){
   function installBuildBadge(){
     try{
@@ -24211,26 +24412,8 @@ const XDrawing = {
       const label=(typeof XBuild!=='undefined' && XBuild.label) ? XBuild.label : '';
       badge.textContent='v'+version;
       badge.setAttribute('aria-label','Gravar build '+version);
+      badge.title='Gravar '+version+'\n\n'+label+'\n\n2026-11-13';
       document.body.appendChild(badge);
-      let tip=null;
-      const tooltipText=()=> 'Gravar '+version+'\n\n'+label+'\n\n2026-06-24';
-      const moveTip=(event)=>{
-        if(!tip) return;
-        tip.style.left=(event.clientX+10)+'px';
-        tip.style.top=(event.clientY+10)+'px';
-      };
-      badge.addEventListener('mouseenter',event=>{
-        tip=document.createElement('div');
-        tip.className='gravar-build-tooltip';
-        tip.textContent=tooltipText();
-        document.body.appendChild(tip);
-        moveTip(event);
-      });
-      badge.addEventListener('mousemove',moveTip);
-      badge.addEventListener('mouseleave',()=>{
-        if(tip && tip.parentNode) tip.parentNode.removeChild(tip);
-        tip=null;
-      });
     }catch(err){ console.warn('Build badge failed to initialize.',err); }
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',installBuildBadge);
@@ -28431,7 +28614,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.200';
+  const EXPECTED_VERSION='0.6.201';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{
