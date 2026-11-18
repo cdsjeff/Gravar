@@ -1,19 +1,7 @@
-# Gravar v0.6.201 Current Resources
+# Gravar Current Resources — v0.6.208
 
-Current standalone Gravar release: **v0.6.201 — Option-Hover Web Tips**.
+Current standalone build: `Gravar_v0.6.208_Project_Home_Folder_Focus.html`.
 
-## Files
+This release makes Chrome/Edge Project Load remember the directory containing the selected Project JSON as the picker home for the next Save, Designate, or Reconnect chooser. It also adds Option-Return split-line guidance to transcript-line/text Option-hover tips in the main transcript and Transcript pop-out.
 
-- `Gravar_v0.6.201_Option_Hover_Web_Tips.html` — named standalone application.
-- `index.html` — identical copy for GitHub Pages/static hosting.
-- `CHANGELOG.md` — cumulative version changelog.
-- `CHANGELOG_BY_DATE.md` — date-organized changelog.
-- `ARCHITECTURE_AUDIT_v0.6.197.md` — modularity/efficiency audit and refactoring roadmap.
-- `gravar-shared-symbols.json` — expanded default reusable Symbols set.
-- `SHA256SUMS.txt` — checksums for the resource files.
-
-## v0.6.201 behavior
-
-Contextual web tips are now deliberate. On macOS, hold **Option while hovering** over a control with help text. On non-Mac systems, use **Alt + hover**. Ordinary hover stays quiet. The same convention applies in the main app and Video/Transcript pop-outs.
-
-Long-video waveform calibration, verified manual Save location, expanded default Symbols, and the modular/message-passing architecture from prior builds are preserved.
+`index.html` is an identical copy of the named standalone HTML for GitHub/web deployment.

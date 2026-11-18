@@ -1,4 +1,70 @@
+## Gravar v0.6.208 — Project Home Folder Focus (2026-11-17)
+- Chrome/Edge Project Load now uses a File System Access picker with a shared project-home ID.
+- The directory containing the Project JSON becomes the remembered picker home for the next manual Save, Designate, or Reconnect chooser.
+- The browser still requires explicit folder authorization before Gravar treats that location as the writable Project folder; no hidden write access is inferred from opening a file.
+- The standard `<input type="file">` Project Load remains the fallback where File System Access is unavailable (including Safari).
+- Transcript-line/text Option-hover tips now state that **Option-Return** splits the line at the text cursor into a new row below, in both the main transcript and Transcript pop-out.
+- Added a diagnostic for the shared project-home picker path. Both embedded JavaScript blocks pass syntax validation.
+
+
+## Gravar v0.6.207 — Modifier-Safe Web Tips (2026-11-16)
+- Option/Alt-hover web tips now appear only when Option/Alt is the sole modifier.
+- Holding Command/Ctrl/Shift with Option/Alt immediately hides the web tip, preventing interference with Project Note, coding, waveform, and video shortcuts.
+- Preserves the existing Option-hover help convention and note shortcut descriptions.
 # Gravar Changelog
+
+## v0.6.206 — 2026-11-16 — Note Shortcut Web Tips
+
+- Added the **Line Note** keyboard shortcut to the Line Note button Option/Alt-hover web tip: **Command-\** on macOS (**Ctrl-\** elsewhere).
+- Added the **Project Note** keyboard shortcut to the Project Note button web tip: **Command-Option-\** on macOS (**Ctrl-Alt-\** elsewhere); the prior **Command/Ctrl-Shift-\** alias is also identified.
+- Added both note shortcuts to transcript-line and transcript-text web tips in the main transcript.
+- Added the same shortcut information to transcript-line/text tips in the Transcript pop-out.
+- Preserved Option/Alt-hover gating; no native ordinary-hover tooltips were reintroduced.
+- Updated build/About/Help version metadata. Both embedded JavaScript blocks pass syntax validation.
+
+## v0.6.205 — 2026-11-16 — Empty-Code Hotspot
+
+- Added a small muted **open-circle (`○`) Code hotspot** at the far-right Code-marker area of every non-comment transcript row that has no assigned user Code.
+- **Command-Option-click** on macOS (**Ctrl-Alt-click** elsewhere) opens the same Add Code palette used by Command-Option-clicking an existing Code marker.
+- The hotspot is removed automatically as soon as a real Code is added and returns when the final Code is removed.
+- Reused the existing modular **`XCodeIconMenu`** add-code pathway rather than introducing a second coding mechanism.
+- Reserved marker-lane width for the empty hotspot so it remains visually distinct from the Line Note marker.
+- Added accessibility labeling and Gravar Option-hover web-tip metadata for the empty hotspot.
+- Updated Transcript/Code Help and current-version metadata.
+- Both embedded JavaScript blocks pass syntax validation; targeted source assertions confirm full-render and incremental-render hotspot handling.
+
+## v0.6.204 — 2026-11-15 — Shared Default Code System
+
+- Made the supplied `gravar-shared-codes.json` the built-in default Coding palette for fresh Gravar projects.
+- The default palette contains **23 rows: 18 Codes and 5 section headers**.
+- Preserved the supplied section titles, Code labels, styles, ordering, collapsed states, IDs, and active selection.
+- Default sections are **DEAN**, **Todd minspeak (home dev)**, **Linda (home dev)**, **Pre-emptive & Transition**, and **Embodied**.
+- Added **`XCodeDefaults`** as the single authority for the built-in Code baseline and migration rules.
+- Exact legacy Gravar built-in `question / answer / repair / overlap` palettes automatically migrate to the new default when older projects are loaded.
+- Genuinely customized project Code palettes are preserved and continue to load project-specifically.
+- Moved Code project persistence into an **`XProjectState` adapter**, continuing the modular architecture and removing direct Code-palette save/load ownership from `XFiles`.
+- Legacy top-level Code/filter fields are still written for backward compatibility.
+- Included the reusable default Code JSON in the Current Resources ZIP as `gravar-shared-codes.json`.
+- Updated Help/About/version metadata and validated both embedded JavaScript blocks.
+
+## v0.6.203 — 2026-11-15 — Project Menu Spacing
+
+- Added a subtle **2-pixel gap** between the **Codes & Symbols** and **Project files** roll-down headers under Files → Project.
+- The gap creates a thin horizontal separation so the two menus read as distinct controls without restoring the removed white backing subpane.
+- No Project-menu behavior, roll-down behavior, file-status logic, or tooltip behavior changed.
+- Updated current-version metadata and validated both embedded JavaScript blocks.
+
+## v0.6.202 — 2026-11-15 — Project Pane and Web Tip Cleanup
+
+- Simplified **Files → Project** so the core Project controls appear directly beneath the selected Project tab; removed the redundant inner **Project** accordion/header.
+- Kept **Codes & Symbols** and **Project files** as independent roll-downs below the Project controls.
+- Removed the shared white backing subpane that visually joined Project, Codes & Symbols, and Project files; the roll-down headers now sit directly in the Files pane.
+- Fixed the remaining ordinary-hover browser tooltips. Static and dynamically assigned `title` attributes are migrated into Gravar's own `data-gravar-webtip` metadata and removed from the live DOM.
+- **Option + hover** on macOS (Alt + hover elsewhere) remains the only contextual web-tip gesture; Command is not required. Releasing the modifier, moving away, or window blur hides the Gravar tip.
+- Added an early `XWebTips.install(document)` pass plus a MutationObserver for later `title` assignments and newly inserted controls, preventing the browser's native light-grey tooltip layer from reappearing.
+- Updated Files Help and Web Tips Help to describe the simplified Project pane and the complete suppression of native browser tooltips.
+- Preserved Project name persistence, Project files path/status behavior, Codes/Symbols roll-down behavior, long-video calibration, expanded default Symbols, verified manual Save location, and the modular/message-passing core.
+- Both embedded JavaScript blocks passed syntax validation and targeted structural assertions passed. A full headless Chromium DOM test could not be completed in the container because Chromium did not produce a usable DOM dump in its system/DBus environment.
 
 ## v0.6.201 — 2026-11-13 — Option-Hover Web Tips
 

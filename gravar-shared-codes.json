@@ -1,0 +1,141 @@
+{
+  "app": "Gravar",
+  "type": "talk-action-code-set",
+  "version": "1.01",
+  "savedAt": "2026-11-16T03:31:10.822Z",
+  "activeTalkActionCodeId": "syvth00kp4g-movf3o2o",
+  "talkActionCodes": [
+    {
+      "id": "syvth00kp4g-movf3o2o",
+      "type": "section",
+      "title": "DEAN",
+      "collapsed": false,
+      "styleColor": "green"
+    },
+    {
+      "id": "talk-answer",
+      "label": "MOVE",
+      "styleShape": "square"
+    },
+    {
+      "id": "ltswpv925x-msyqn5g9",
+      "label": "Extend",
+      "styleShape": "square"
+    },
+    {
+      "id": "kx0z0n8ugfs-msyqsxrc",
+      "label": "AI"
+    },
+    {
+      "id": "gpieud497f-mwipeuwc",
+      "label": "kbd"
+    },
+    {
+      "id": "iipeim9bxb-movf07ak",
+      "type": "section",
+      "title": "Todd minspeak (home dev)",
+      "collapsed": false,
+      "styleColor": "blue"
+    },
+    {
+      "id": "484hxyzn9bc-mou2kl4n",
+      "label": "mWord",
+      "styleColor": "blue",
+      "styleShape": "square"
+    },
+    {
+      "id": "s85m2a03ox-mou2kxpw",
+      "label": "mUttS",
+      "styleColor": "blue",
+      "styleShape": "square"
+    },
+    {
+      "id": "hiw897jv65f-mou2katd",
+      "label": "mUttM",
+      "styleColor": "blue",
+      "styleShape": "square"
+    },
+    {
+      "id": "pdsv6oiw8bf-mwipflgb",
+      "label": "kbd"
+    },
+    {
+      "id": "3d4ccwxtvju-msyqmezy",
+      "type": "section",
+      "title": "Linda (home dev)",
+      "collapsed": false,
+      "styleColor": "red"
+    },
+    {
+      "id": "wm9seupw81i-msyqrj8c",
+      "label": "kMove",
+      "styleColor": "red",
+      "styleShape": "square"
+    },
+    {
+      "id": "sclbb2wo3qo-msyqrwxv",
+      "label": "kbd",
+      "styleColor": "red",
+      "styleShape": "circle"
+    },
+    {
+      "id": "zv6wp2tl7hi-msyrew2q",
+      "type": "section",
+      "title": "Pre-emptive & Transition",
+      "collapsed": false
+    },
+    {
+      "id": "zm9xuvgrdx-msyqvd2w",
+      "label": "prYell",
+      "styleColor": "orange"
+    },
+    {
+      "id": "j3jpxq3ky4g-msyqvl8a",
+      "label": "prKbd",
+      "styleColor": "orange",
+      "styleShape": "circle"
+    },
+    {
+      "id": "b53jhj7w1o4-msyrjkdg",
+      "label": "sYell",
+      "styleColor": "orange"
+    },
+    {
+      "id": "vqt2b1icscn-msyqws7t",
+      "label": "nav",
+      "styleColor": "orange",
+      "styleShape": "diamond"
+    },
+    {
+      "id": "yp7uk6dkgkf-msyqxrcl",
+      "label": "abd",
+      "styleColor": "orange",
+      "styleShape": "star"
+    },
+    {
+      "id": "algm9f8pjkl-movezw3b",
+      "type": "section",
+      "title": "Embodied",
+      "collapsed": false,
+      "styleColor": "purple"
+    },
+    {
+      "id": "talk-overlap",
+      "label": "Utterance",
+      "styleColor": "purple",
+      "styleShape": "circle"
+    },
+    {
+      "id": "pxdm3m4rtwb-mou2jyy2",
+      "label": "Vocal",
+      "styleColor": "purple",
+      "styleShape": "square"
+    },
+    {
+      "id": "mzjl95ggd2-mp77czj3",
+      "label": "Embodied",
+      "styleColor": "purple",
+      "styleShape": "triangle"
+    }
+  ]
+}
