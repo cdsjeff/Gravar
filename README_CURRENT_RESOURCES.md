@@ -1,7 +1,7 @@
-# Gravar Current Resources — v0.6.208
+# Gravar Current Resources — v0.6.209
 
-Current standalone build: `Gravar_v0.6.208_Project_Home_Folder_Focus.html`.
+Current standalone build: `Gravar_v0.6.209_Project_Save_Media_Stall_Repair.html`.
 
-This release makes Chrome/Edge Project Load remember the directory containing the selected Project JSON as the picker home for the next Save, Designate, or Reconnect chooser. It also adds Option-Return split-line guidance to transcript-line/text Option-hover tips in the main transcript and Transcript pop-out.
+This release repairs a Project Save media-state problem that could unnecessarily rewrite a large V1 video file and interfere with playback. Gravar now verifies and reuses matching media already present in the active Project folder, preserves folder-restored media state, and copies a genuinely missing V1 only once.
 
 `index.html` is an identical copy of the named standalone HTML for GitHub/web deployment.

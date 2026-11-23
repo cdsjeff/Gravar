@@ -1,3 +1,12 @@
+## Gravar v0.6.209 — Project Save Media Stall Repair (2026-11-23)
+- Diagnosed an intermittent playback-freeze report following Project → Save: Save could rewrite the entire loaded V1 file into the Project folder even when that same video was already there.
+- Added a Project Save media-reuse guard that checks the existing Project-folder V1 by Gravar media identity, filename, byte size, and modification time where available before any full-media write.
+- Project-folder restore/reconnect now preserves `projectVideoSavedName` instead of allowing the generic attach path to clear it.
+- Manually reattaching the same project video can now be recognized as already present in the authorized Project folder, so ordinary Project Save remains JSON-only whenever possible.
+- A genuinely missing V1 is still copied once; later Saves treat it as present rather than rewriting it.
+- Added diagnostics reporting whether the media-reuse guard is available and whether the last Project Save reused existing media or performed a full copy.
+- Updated Files help/About/build metadata. Both embedded JavaScript blocks pass syntax validation, and targeted identity tests cover same-file, same-size Blob restore, different-size, different-modification-time, and different-name cases.
+
 ## Gravar v0.6.208 — Project Home Folder Focus (2026-11-17)
 - Chrome/Edge Project Load now uses a File System Access picker with a shared project-home ID.
 - The directory containing the Project JSON becomes the remembered picker home for the next manual Save, Designate, or Reconnect chooser.

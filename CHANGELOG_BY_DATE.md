@@ -7,6 +7,13 @@
 
 > **Dating note:** Dates below are based on the Gravar development record available in this project. Where an exact release date was not recorded, the revision remains under **Date not recorded** rather than being assigned an invented date.
 
+## 2026-11-23
+
+### v0.6.209 — Project Save Media Stall Repair
+- Prevents Project Save from rewriting the full V1 when the same media is already present in the active Project folder.
+- Preserves project-folder media state after restore/reconnect and verifies manually reattached media before copying.
+- Adds diagnostics for media reuse versus full-copy behavior.
+
 ## 2026-11-17
 
 ### v0.6.208 — Project Home Folder Focus
