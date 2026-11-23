@@ -9,6 +9,17 @@
 
 ## 2026-11-23
 
+### v0.6.211 — Merge Line Note Repair
+- Fixes replicated Line Note loss during Merge caused by a stale side-pane commit overwriting the newly merged row after row reconstruction.
+- Commits/closes an open inline Line Note before Merge and synchronizes the merged row without calling the commit-first `selectOne()` path.
+- Preserves merged Line Notes and Code values while retaining existing Comment-row preservation behavior.
+
+### v0.6.210 — Project Home State Repair
+- Separates the loaded Project JSON's navigation anchor from writable Project-folder authority.
+- Close Project and each new Project Load now clear the prior project's writable folder handle, preventing stale save-location inheritance.
+- Later Project-folder choosers use the actual loaded Project JSON file handle as `startIn` when no folder is authorized.
+- Same-name remembered folder handles are validated against the current Project JSON and rejected when stale.
+
 ### v0.6.209 — Project Save Media Stall Repair
 - Prevents Project Save from rewriting the full V1 when the same media is already present in the active Project folder.
 - Preserves project-folder media state after restore/reconnect and verifies manually reattached media before copying.

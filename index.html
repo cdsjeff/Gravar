@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.209 — Project Save Media Stall Repair
+Gravar v0.6.211 — Merge Line Note Repair
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -25,7 +25,8 @@ Current release highlights:
 - Play button cursor is now a normal pointer unless the playback-speed modifier is actively held (Command on macOS; Ctrl on non-Mac platforms).
 - Manual Save now always opens the Project-folder selection window first in Chrome/Edge so the save location can be verified; autosave remains automatic and silent.
 - Project Save now verifies whether the loaded V1 already exists in the active Project folder before writing media; restored/reconnected media is marked as already present, preventing unnecessary full-video rewrites that can stall playback.
-- In Chrome/Edge, loading a Project JSON through Gravar now remembers that containing directory as the project picker home; the next Save, Designate, or Reconnect chooser opens focused there before the user authorizes a writable Project folder.
+- Project-home navigation now uses the actual loaded Project JSON file handle as an explicit chooser anchor in Chrome/Edge; stale writable folder handles are cleared when projects close or a different project begins loading, preventing cross-project folder inheritance during repeated Load/Save cycles.
+- Merge now preserves Line Notes and merged Code values: any open inline Line Note is committed before rows are rebuilt, and the merged row is synchronized into the side pane without a stale post-merge commit overwriting its data.
 - Transcript-line Option-hover help now states that Option–Return splits the line at the text cursor into a new row below.
 - Contextual web tips require Option + hover on macOS (Alt + hover on non-Mac systems). Native browser title tooltips are globally suppressed so ordinary hover stays completely quiet in the main app and pop-outs.
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
@@ -54,7 +55,7 @@ Primary UI/application modules:
 - XScrollSync
 - XApp
 
-Architecture note for v0.6.209:
+Architecture note for v0.6.211:
 - Cross-cutting rules are being moved from large UI modules into small single-responsibility services.
 - New cross-module behavior should prefer XBus messages or explicit service APIs over direct mutation of another UI module.
 - Project-state extensions should register with XProjectState rather than monkey-patching XFiles.payload().
@@ -63,7 +64,7 @@ Architecture note for v0.6.209:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.209 Standalone Web</title>
+<title>Gravar — Version 0.6.211 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -3050,7 +3051,7 @@ input[type=reset],
 <div class="files-submenu-content">
 <div class="files-submenu-panel files-project-panel active" data-files-panel="project">
 <div class="files-project-controls-direct" id="projectControlsRollupContent" aria-label="Project controls">
-<label class="filebtn" for="projectFile" id="loadProjectButton" title="Load Gravar project JSON. In Chrome/Edge, the folder used here becomes the remembered project home for the next Save, Designate, or Reconnect chooser.">Load</label><input accept=".json,application/json" id="projectFile" title="Load Gravar project JSON" type="file"/>
+<label class="filebtn" for="projectFile" id="loadProjectButton" title="Load Gravar project JSON. In Chrome/Edge, Gravar retains the selected Project JSON file handle as a navigation anchor so later Project-folder choosers start in that file’s containing directory without inheriting another project’s write access.">Load</label><input accept=".json,application/json" id="projectFile" title="Load Gravar project JSON" type="file"/>
 <button id="saveProject" title="Save project JSON to Project folder or download">Save</button>
 <button id="closeProject" title="Close current project">Close</button>
 <button id="chooseDataFolder" title="Choose Project folder for project files, autosaves, and exports">Folder</button>
@@ -3200,7 +3201,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.209 — Standalone Web. Project Save now verifies whether the loaded V1 already exists in the active Project folder before any media write, preserves folder-restored media state, and avoids unnecessary full-video rewrites that can interfere with playback.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.211 — Standalone Web. Merge now preserves Line Notes and merged Code values by committing any open inline Line Note before rebuilding rows and synchronizing the side pane from the merged row without a stale post-merge commit.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3220,7 +3221,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.209 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.211 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3247,7 +3248,7 @@ input[type=reset],
 <h3>Files, projects, autosave, and imports</h3>
 <p>Within <strong>Files → Project</strong>, the core Project controls appear directly below the Project tab row with no additional Project header. <strong>Codes &amp; Symbols</strong> and <strong>Project files</strong> remain separate roll-downs below those controls. They are not joined by a white background subpane. <strong>Project name</strong> is always visible at the bottom of the Files pane, including on Import, Export, Diag, and Auto.</p>
 <ul>
-<li><strong>Project:</strong> Load, Save, Close, and Folder manage Gravar project JSON and the Project folder. In Chrome/Edge, every manual Save opens the Project-folder chooser first; selecting a folder verifies the target location and makes that folder active for the save plus subsequent autosaves/exports. Current Codes, Symbols, Groups, Code styles, and Group definitions are saved in the project. In Safari, direct folder writing is unavailable: Save becomes Save As…, and the user chooses the team project folder in Safari's download dialog.</li>
+<li><strong>Project:</strong> Load, Save, Close, and Folder manage Gravar project JSON and the Project folder. In Chrome/Edge, the selected Project JSON file is retained as a navigation anchor so later Project-folder choosers start in its containing directory. Every manual Save still opens the Project-folder chooser first; selecting a folder verifies the target location and makes that folder active for the save plus subsequent autosaves/exports. Closing a project or beginning a different Project Load clears the prior project’s writable-folder authority so save locations do not leak across projects. Current Codes, Symbols, Groups, Code styles, and Group definitions are saved in the project. In Safari, direct folder writing is unavailable: Save becomes Save As…, and the user chooses the team project folder in Safari's download dialog.</li>
 <li><strong>Codes &amp; Symbols:</strong> import/export reusable Code and Symbols JSON libraries. These shared-library files are separate from the Project folder, while every project still embeds its current palettes.</li>
 <li><strong>DOTE:</strong> imports MacWhisper DOTE JSON files directly from Files → Import. Gravar maps startTime, endTime, speakerDesignation, and text into Start, End, Duration, Speaker, and Transcript fields.</li>
 <li><strong>Import TSV:</strong> loads standard transcription TSV files. Gravar recognizes Start/End/Transcript headers, avoids misclassifying them as ELAN TSV, and sorts imported rows chronologically by Start time.</li>
@@ -3282,7 +3283,7 @@ input[type=reset],
 <ul>
 <li><strong>Start / End:</strong> Command/Ctrl-[ sets Start; Command/Ctrl-] sets End. Command/Ctrl-click a Start or End field seeks to that time; Command/Ctrl-Option/Alt-click inserts current media time.</li>
 <li><strong>line↓ / line↑ / Delete:</strong> Command/Ctrl-Return adds a row below; Command/Ctrl-Shift-Return adds a row above; Command/Ctrl-Delete or Command/Ctrl-Backspace deletes the active row. The same commands work in the transcript pop-out.</li>
-<li><strong>Merge:</strong> merges selected contiguous rows. Comment rows and child metadata are handled separately from ordinary transcript row text.</li>
+<li><strong>Merge:</strong> merges selected contiguous rows. Line Notes and Code values from the merged transcript rows are preserved on the merged row. Comment rows and child metadata are handled separately from ordinary transcript row text.</li>
 <li><strong>Drag reorder:</strong> drag the line-number cell up or down to reposition a row. All row data moves with it and line numbers renumber automatically.</li>
 <li><strong>sort-Start:</strong> in Transcript → Find &amp; Replace, sorts rows by Start time; blank Start rows move to the bottom and same-time rows keep their order.</li>
 <li><strong>Speaker field:</strong> right-justified with 10 px right padding. Speaker italic/color styling is inherited visually by the associated transcript line.</li>
@@ -3779,6 +3780,8 @@ input[type=reset],
 /* Gravar V0.6.205: adds a neutral open-circle Code hotspot to uncoded transcript rows; Command/Ctrl-Option/Alt-click opens the existing Add Code palette without creating a second coding pathway. */
 /* Gravar V0.6.207: prevents Option/Alt-hover web tips from appearing during Command/Ctrl/Shift modified shortcuts, keeping note and coding gestures unobstructed. */
 /* Gravar V0.6.209: prevents unnecessary full-video rewrites during Project Save by verifying same-media files already present in the active Project folder and preserving project-folder media state across restore/reconnect. */
+/* Gravar V0.6.210: separates project navigation anchor state from writable Project-folder authority; loaded Project JSON file handles now explicitly seed chooser startIn, and stale writable folder handles are cleared on close/new load. */
+/* Gravar V0.6.211: repairs Merge Line Note/Code loss caused by stale side-pane commit after the merged row became active; inline Line Note is committed before merge and post-merge UI sync no longer re-commits stale side-pane fields. */
 /* Gravar V0.6.208: uses a shared File System Access picker ID so Project Load establishes the remembered home directory for the next Save/Designate/Reconnect chooser in Chrome/Edge; adds Option-Return split-line guidance to transcript web tips. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
@@ -3789,9 +3792,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.209',
+  version: '0.6.211',
   label: 'Standalone Web',
-  description: 'This build prevents Project Save from unnecessarily rewriting a loaded V1 that is already present in the active Project folder, preserves project-folder media identity after restore/reconnect, and records whether Save reused or copied media. Project-home focus, modifier-safe web tips, Code hotspot behavior, default Codes/Symbols, long-video calibration, and transcript split-line guidance are preserved.',
+  description: 'This build repairs Merge so Line Notes and merged Code values are not overwritten by stale side-pane state after rows are rebuilt. Any open inline Line Note is committed before Merge, and the merged row is synchronized into the side pane without invoking the commit-first selection path. Project-home state repair and Project Save media-reuse protections are preserved.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -4033,6 +4036,8 @@ const XState = {
   projectExpectedFolderName: '',
   projectReconnectHandle: null,
   projectReconnectData: null,
+  projectHomeFileHandle: null,
+  projectHomeFileName: '',
   preferProjectHomePickerOnNextFolderChoice: false,
   projectFilePathMode: 'short',
   projectFileLocations: null,
@@ -6613,6 +6618,11 @@ const XTranscript = {
     return row;
   },
   mergeSelected(){
+    // Commit and close an inline Line Note before rebuilding rows. Without this,
+    // the editor can remain attached to a row that is about to be replaced.
+    if(typeof XLineNotePopdown !== 'undefined' && XLineNotePopdown.opened && typeof XLineNotePopdown.close === 'function'){
+      XLineNotePopdown.close();
+    }
     if(typeof XSidePane !== 'undefined' && typeof XSidePane.commitActiveFields === 'function'){
       XSidePane.commitActiveFields({noUndo:true});
     }
@@ -6686,9 +6696,12 @@ const XTranscript = {
     XState.activeRowId=merged.id;
     XState.selectionAnchorId=merged.id;
     this.render();
-    this.selectOne(merged.id);
+    // Selection state is already set above. Do not call selectOne() here: selectOne()
+    // begins by committing the still-displayed pre-merge side-pane fields, which can
+    // overwrite merged.notes / merged.talkAction on the newly active merged row.
+    this.markRows();
+    if(typeof XSidePane !== 'undefined' && typeof XSidePane.sync === 'function') XSidePane.sync();
     this.restoreScroll(scroll);
-    if(typeof XSidePane !== 'undefined') XSidePane.sync();
     XFiles.autosave();
     if(typeof XTranscriptPopout !== 'undefined') XTranscriptPopout.syncSoon();
     XStatus.set(commentRows.length ? 'Merged transcript rows and moved '+commentRows.length+' Comment row'+(commentRows.length===1?'':'s')+' above the merged section.' : 'Merged selected transcript rows.');
@@ -14316,7 +14329,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','A single persistent Project name field is always visible at the bottom of the Files pane on Project, Import, Export, Diag, and Auto. It sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','These controls appear directly below the selected Project tab; there is no second Project accordion/header. In Chrome/Edge, Load uses a project-home-aware file picker: the directory containing the chosen Project JSON becomes the remembered picker home for the next Save, Designate, or Reconnect chooser. The browser does not expose that parent folder directly to Gravar, so the user still authorizes the directory when the folder chooser opens. Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration. Before Save writes any V1 media, Gravar now checks whether the same video is already present in the authorized Project folder; matching media is reused rather than rewritten, keeping ordinary project saves JSON-only whenever possible.'],['Project files','Appears below Codes & Symbols in Files → Project and is collapsed by default. Click the Project files header to open it. It shows Project JSON, transcript source, V1, V2, and audio with ✓ Loaded/Saved, ± Reference, ✕ Missing/Failed, or — None. Click any pathname to show a wrapped, selectable pathname below the list. Use Path: Last 3 / Path: Full to toggle the display. Full means the fullest path Gravar can know; ordinary web browsers often hide the macOS /Users/... absolute path, so Project-folder-relative or filename-only locations may be shown.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local V1 media file. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','A single persistent Project name field is always visible at the bottom of the Files pane on Project, Import, Export, Diag, and Auto. It sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','These controls appear directly below the selected Project tab; there is no second Project accordion/header. In Chrome/Edge, Load retains the actual selected Project JSON file handle as a navigation anchor. Later Save, Designate, or Reconnect choosers use that handle to start in the JSON file’s containing directory until the user explicitly authorizes a writable Project folder. Close Project and each new Project Load clear the prior project’s writable folder handle, preventing one project from inheriting another project’s save location. If Chrome has a remembered same-name Project folder, Gravar validates that it actually contains the current Project JSON before reusing it. Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration. Before Save writes any V1 media, Gravar checks whether the same video is already present in the authorized Project folder; matching media is reused rather than rewritten, keeping ordinary project saves JSON-only whenever possible.'],['Project files','Appears below Codes & Symbols in Files → Project and is collapsed by default. Click the Project files header to open it. It shows Project JSON, transcript source, V1, V2, and audio with ✓ Loaded/Saved, ± Reference, ✕ Missing/Failed, or — None. Click any pathname to show a wrapped, selectable pathname below the list. Use Path: Last 3 / Path: Full to toggle the display. Full means the fullest path Gravar can know; ordinary web browsers often hide the macOS /Users/... absolute path, so Project-folder-relative or filename-only locations may be shown.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video','Loads a local V1 media file. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere. Saved Point corrections are cumulative and are not limited by the temporary ±4-second Wave± nudge range.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally. On long recordings, saved corrections may accumulate beyond ±4 seconds even though each temporary Wave± adjustment is limited to ±4 seconds.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','When Child tiers is checked, rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier, rows beginning with a single ( are parent tiers, and italic Speaker rows can also be child tiers. When Child tiers is off, parentheses are ordinary transcript text and rows retain their own timecodes.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values, including child tiers marked with double parentheses. When unchecked, child tiers retain their own Start/Stop/Dur values; merely becoming a child tier does not replace their timing.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -15174,10 +15187,16 @@ const XFiles = {
     }
 
     XState.rows=[];
+    // Release the current project's writable folder authority. Keep only the
+    // last Project JSON file handle as a navigation anchor so the next Load
+    // picker can reopen in the same directory without inheriting write access.
+    XState.dataDirHandle=null;
+    XState.dataDirName='';
     XState.projectExpectedFolderName='';
     XState.projectReconnectHandle=null;
     XState.projectReconnectData=null;
     XState.preferProjectHomePickerOnNextFolderChoice=false;
+    if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Not selected';
     if(typeof XProjectFiles!=='undefined') XProjectFiles.reset();
     this.setReconnectProjectFolderVisible(false);
     XState.activeRowId=null;
@@ -15401,33 +15420,64 @@ const XFiles = {
     return 'gravar-project-home';
   },
 
+  projectPickerStartHandle(){
+    // Writable Project-folder authority wins once the user has explicitly
+    // authorized it. Otherwise use the loaded Project JSON file handle only
+    // as a navigation anchor; a FileSystemFileHandle is valid as startIn and
+    // opens the picker in its containing directory without granting write access.
+    return XState.dataDirHandle || XState.projectHomeFileHandle || null;
+  },
+
   projectHomeDirectoryPickerOptions(extra){
     const options=Object.assign({mode:'readwrite',id:this.projectHomePickerId()},extra||{});
-    if(!XState.preferProjectHomePickerOnNextFolderChoice && XState.dataDirHandle && !options.startIn){
-      options.startIn=XState.dataDirHandle;
+    if(!options.startIn){
+      const start=this.projectPickerStartHandle();
+      if(start) options.startIn=start;
     }
     return options;
   },
 
+  projectOpenFilePickerOptions(){
+    const options={
+      id:this.projectHomePickerId(),
+      multiple:false,
+      types:[{description:'Gravar project JSON',accept:{'application/json':['.json']}}]
+    };
+    const start=this.projectPickerStartHandle();
+    if(start) options.startIn=start;
+    return options;
+  },
+
+  beginProjectLoadLocation(fileHandle){
+    // A writable directory handle belongs to one active project only. Never
+    // carry it into another Project Load. The selected JSON file handle is
+    // retained separately as a chooser anchor, not as write authorization.
+    XState.dataDirHandle=null;
+    XState.dataDirName='';
+    XState.projectExpectedFolderName='';
+    XState.projectReconnectHandle=null;
+    XState.projectReconnectData=null;
+    XState.projectVideoSavedName='';
+    XState.lastProjectVideoSaveAction='';
+    XState.lastProjectVideoSaveBytes=0;
+    XState.preferProjectHomePickerOnNextFolderChoice=false;
+    XState.projectHomeFileHandle=fileHandle||null;
+    XState.projectHomeFileName=fileHandle && fileHandle.name ? String(fileHandle.name) : '';
+    this.setReconnectProjectFolderVisible(false);
+    if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Project folder not authorized';
+  },
+
   async openProjectFromHomePicker(){
     if(typeof window.showOpenFilePicker!=='function'){
-      XState.preferProjectHomePickerOnNextFolderChoice=false;
       if(XDom.projectFile) XDom.projectFile.click();
       return false;
     }
     try{
-      const [handle]=await window.showOpenFilePicker({
-        id:this.projectHomePickerId(),
-        multiple:false,
-        types:[{description:'Gravar project JSON',accept:{'application/json':['.json']}}]
-      });
+      const [handle]=await window.showOpenFilePicker(this.projectOpenFilePickerOptions());
       if(!handle) return false;
       const file=await handle.getFile();
       if(!file) return false;
-      // The web platform does not reveal a selected file's parent directory handle.
-      // A shared picker ID is the safe way to let Chrome/Edge remember that directory
-      // and focus the next directory chooser there.
-      XState.preferProjectHomePickerOnNextFolderChoice=true;
+      this.beginProjectLoadLocation(handle);
       await this.alignProjectFolderToImportedFile(file);
       this.loadProject(file);
       return true;
@@ -15436,8 +15486,7 @@ const XFiles = {
         XStatus.set('Project load cancelled.');
         return false;
       }
-      console.warn('Project home-aware file picker failed; falling back to the standard project input.',err);
-      XState.preferProjectHomePickerOnNextFolderChoice=false;
+      console.warn('Project file picker failed; falling back to the standard project input.',err);
       if(XDom.projectFile) XDom.projectFile.click();
       return false;
     }
@@ -15481,6 +15530,21 @@ const XFiles = {
     return true;
   },
 
+  async projectSourceRelationshipToDirectory(directoryHandle){
+    if(!directoryHandle || !XState.projectHomeFileHandle || typeof directoryHandle.resolve!=='function') return null;
+    try{
+      const relative=await directoryHandle.resolve(XState.projectHomeFileHandle);
+      if(relative===null) return false;
+      // Project JSON files are expected at the root of their Project folder.
+      // A one-component path therefore confirms this is the directory from
+      // which the current Project JSON was actually opened.
+      return Array.isArray(relative) && relative.length===1;
+    }catch(err){
+      console.warn('Could not compare remembered Project folder with loaded Project JSON source.',err);
+      return null;
+    }
+  },
+
   async prepareProjectFolderReconnect(data){
     const rememberedName=String((data && (data.projectFolderName||data.dataFolderName))||'').trim();
     XState.projectExpectedFolderName=rememberedName;
@@ -15509,7 +15573,14 @@ const XFiles = {
 
     // Otherwise recover the structured-cloned directory handle saved by Chrome/Edge.
     if(!XState.projectReconnectHandle){
-      const rememberedHandle=await XFolderStore.retrieveProjectFolder(rememberedName);
+      let rememberedHandle=await XFolderStore.retrieveProjectFolder(rememberedName);
+      if(rememberedHandle){
+        const relationship=await this.projectSourceRelationshipToDirectory(rememberedHandle);
+        if(relationship===false){
+          console.warn('Rejected stale remembered Project folder handle because it does not contain the currently loaded Project JSON source file.');
+          rememberedHandle=null;
+        }
+      }
       if(rememberedHandle){
         const permission=await this.queryProjectFolderPermission(rememberedHandle);
         if(permission==='granted'){
@@ -15607,7 +15678,6 @@ const XFiles = {
       if(!handle){
         XStatus.set(expected ? 'Choose the saved Project folder: '+expected : 'Choose the Project folder for this project.');
         handle=await window.showDirectoryPicker(this.projectHomeDirectoryPickerOptions());
-        XState.preferProjectHomePickerOnNextFolderChoice=false;
         const permission=await this.verifyDirectoryPermission(handle);
         if(!permission) throw new Error('Project folder permission was not granted.');
       }
@@ -15832,7 +15902,7 @@ const XFiles = {
       }
       if(XDom.saveProject){
         XDom.saveProject.textContent='Save…';
-        XDom.saveProject.title="Open the Project-folder chooser first, verify the target location, then save the project JSON there. After loading a Project JSON in Chrome/Edge, this chooser is focused on that project’s remembered home folder. Autosave remains automatic and does not open a chooser.";
+        XDom.saveProject.title="Open the Project-folder chooser first, verify the target location, then save the project JSON there. After loading a Project JSON in Chrome/Edge, this chooser starts in the directory containing that Project JSON (or the currently authorized Project folder). Autosave remains automatic and does not open a chooser.";
       }
       return;
     }
@@ -15870,7 +15940,6 @@ const XFiles = {
 
     try{
       const handle=await window.showDirectoryPicker(this.projectHomeDirectoryPickerOptions());
-      XState.preferProjectHomePickerOnNextFolderChoice=false;
       XState.dataDirHandle=handle;
       XState.dataDirName=handle.name||'selected folder';
       XState.projectExpectedFolderName=XState.dataDirName;
@@ -15926,7 +15995,6 @@ const XFiles = {
       }
 
       await this.activateProjectFolderHandle(handle,{sync:false});
-      XState.preferProjectHomePickerOnNextFolderChoice=false;
       if(!sameFolder) XState.projectVideoSavedName='';
       if(typeof XProjectFiles!=='undefined') XProjectFiles.render();
 
@@ -18546,7 +18614,7 @@ const XFiles = {
     }
     XDom.projectFile.onchange=async e=>{
       const file=e.target.files[0];
-      XState.preferProjectHomePickerOnNextFolderChoice=false;
+      this.beginProjectLoadLocation(null);
       await this.alignProjectFolderToImportedFile(file);
       await this.loadProject(file);
       e.target.value='';
@@ -22674,7 +22742,8 @@ const XDiagnostics = {
     this.section('Save, export, import, and project payloads');
     this.add(this.functionExists(XFiles.saveProject), 'Save project function is available');
     this.add(this.functionExists(XFiles.chooseProjectFolderForManualSave), 'Manual Save verifies the target Project folder first', 'In browsers with direct folder access, Save opens the folder chooser before writing; autosave remains non-interactive.');
-    this.add(this.functionExists(XFiles.openProjectFromHomePicker) && this.functionExists(XFiles.projectHomeDirectoryPickerOptions), 'Project Load establishes a remembered picker home for Save/Designate/Reconnect', 'Chrome/Edge uses one shared File System Access picker ID so the next project-folder chooser can reopen focused on the directory used to load the Project JSON.');
+    this.add(this.functionExists(XFiles.openProjectFromHomePicker) && this.functionExists(XFiles.projectHomeDirectoryPickerOptions) && this.functionExists(XFiles.beginProjectLoadLocation), 'Project home anchor is separated from writable Project-folder authority', 'Chrome/Edge retains the loaded Project JSON file handle only as a startIn navigation anchor; active writable folder handles are cleared on Close/new Load so repeated projects cannot inherit a stale save target.');
+    this.add(this.functionExists(XFiles.projectSourceRelationshipToDirectory), 'Remembered Project-folder handles can be validated against the loaded Project JSON source', 'When both handles are available, Gravar rejects a same-name remembered folder that does not actually contain the current Project JSON file.');
     this.add(this.functionExists(XFiles.loadProject), 'Load project function is available');
     this.add(this.exists(XDom.appendProjectFile), 'Append project control is present');
     this.add(this.functionExists(XFiles.appendProject), 'Append project function is available');
@@ -22687,6 +22756,11 @@ const XDiagnostics = {
     this.add(this.functionExists(XFiles.exportTranscriptComments), 'Export Transcript+Comment function is available');
 
     this.add(this.functionExists(XTranscript.mergeSelected), 'Merge selected rows function is available');
+    {
+      const mergeSource=String(XTranscript.mergeSelected||'');
+      this.add(mergeSource.includes('XLineNotePopdown.close()') ? 'PASS' : 'FAIL', 'Merge commits an open inline Line Note before rebuilding rows', 'Prevents an inline Line Note from remaining attached to a row that is removed by Merge.');
+      this.add(!mergeSource.includes('this.selectOne(merged.id)') && mergeSource.includes('this.markRows()') ? 'PASS' : 'FAIL', 'Merge avoids stale post-merge side-pane commit', 'The merged row is marked and synced directly so old side-pane Line Note/Code values cannot overwrite merged data.');
+    }
     this.add(this.functionExists(XTranscript.computeLineDurations), 'Compute transcript-line durations function is available',
       'LineDur overwrites each row duration from End minus Start, using millisecond-precision stored times while displaying rounded tenths.');
     this.add(this.functionExists(XTranscript.updateCurrentSpokenRow), 'Current-line highlighting function is available',
@@ -28947,7 +29021,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.209';
+  const EXPECTED_VERSION='0.6.211';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{

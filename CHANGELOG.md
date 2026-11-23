@@ -1,3 +1,21 @@
+## Gravar v0.6.211 — Merge Line Note Repair (2026-11-23)
+- Diagnosed replicated Line Note loss during Merge: the merged row correctly collected `row.notes`, but the subsequent `selectOne(merged.id)` call committed stale side-pane fields after the merged row had already become active, overwriting the newly merged Line Note (and potentially merged Code values).
+- Merge now commits/closes any open inline Line Note before rebuilding rows.
+- Removed the post-merge `selectOne(merged.id)` path; selection state is already established, so Merge now marks the row and synchronizes the side pane directly from the merged row without a commit-first overwrite.
+- Line Notes and Code values from all merged transcript rows remain on the merged row; intervening Comment rows retain their separate preservation/lift behavior.
+- Updated Merge Help and added Diagnostics checks for pre-merge inline-note commit and absence of the stale post-merge commit path.
+- Both embedded JavaScript blocks pass syntax validation.
+
+## Gravar v0.6.210 — Project Home State Repair (2026-11-23)
+- Replaced the v0.6.208 shared-picker-memory approach as the primary Project-home authority with an explicit `FileSystemFileHandle` anchor for the loaded Project JSON.
+- Chrome/Edge Project Load now retains the actual selected Project JSON file handle and uses it as `startIn` for later Project Load / Save / Designate / Reconnect choosers when no writable Project folder is active.
+- Fixed a cross-project state leak: **Close Project** now clears `dataDirHandle` / `dataDirName`, so the next project cannot inherit the prior project's writable save location.
+- Beginning any new Project Load also clears the prior project's writable folder authority before restoring the newly loaded project's folder state.
+- Added validation of remembered same-name Project-folder handles against the currently loaded Project JSON source using `FileSystemDirectoryHandle.resolve()`; stale handles that do not contain the current JSON are rejected.
+- Standard file-input fallback deliberately clears the explicit Project-home anchor because the browser does not expose a file-system handle in that path.
+- Updated Files Help, Load/Save web-tip text, About/build metadata, and Diagnostics to describe the separated navigation-anchor vs writable-folder model.
+- Preserves v0.6.209's Project Save media-reuse guard, so matching V1 media already in the authorized Project folder is not rewritten. Both embedded JavaScript blocks pass syntax validation and targeted source assertions verify the close/new-load authority reset, explicit `startIn` anchor, fallback behavior, and stale-folder validation.
+
 ## Gravar v0.6.209 — Project Save Media Stall Repair (2026-11-23)
 - Diagnosed an intermittent playback-freeze report following Project → Save: Save could rewrite the entire loaded V1 file into the Project folder even when that same video was already there.
 - Added a Project Save media-reuse guard that checks the existing Project-folder V1 by Gravar media identity, filename, byte size, and modification time where available before any full-media write.
