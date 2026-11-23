@@ -1,3 +1,13 @@
+## Gravar v0.6.212 — Merge Note Dividers + Multi-Line Delete (2026-11-23)
+- Multiple Line Notes preserved during Merge are now separated with a visible new-line / `-----` / new-line divider (`<br>-----<br>`), preserving rich-text display rather than collapsing whitespace.
+- Added true multi-line delete: when multiple rows are Shift-selected, the Delete button, Command/Ctrl-Delete, and Command/Ctrl-Backspace delete the full selected range.
+- Multi-line deletion creates one Undo snapshot before removal, so one Command/Ctrl-Z restores the entire block with transcript text, timing, Codes, Line Notes, Comment rows, and child-tier metadata.
+- Row-specific delete controls remain single-row operations.
+- Fixed keyboard handling so Command/Ctrl-Delete no longer collapses a multi-row selection to the focused row before deletion.
+- Transcript pop-out Delete and Merge commands now preserve an existing selected range instead of collapsing it before the command runs.
+- Updated Help, Delete web-tip text, About/build metadata, and Diagnostics for both behaviors.
+- Both embedded JavaScript blocks pass syntax validation and targeted source assertions verify the note divider, one-snapshot multi-delete, main-window selection preservation, and pop-out selection preservation.
+
 ## Gravar v0.6.211 — Merge Line Note Repair (2026-11-23)
 - Diagnosed replicated Line Note loss during Merge: the merged row correctly collected `row.notes`, but the subsequent `selectOne(merged.id)` call committed stale side-pane fields after the merged row had already become active, overwriting the newly merged Line Note (and potentially merged Code values).
 - Merge now commits/closes any open inline Line Note before rebuilding rows.

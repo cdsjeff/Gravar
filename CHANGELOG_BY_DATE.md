@@ -9,6 +9,11 @@
 
 ## 2026-11-23
 
+### v0.6.212 — Merge Note Dividers + Multi-Line Delete
+- Multiple merged Line Notes are separated by a new line, `-----`, and another new line.
+- Shift-selected row ranges can now be deleted together with Delete / Command/Ctrl-Delete / Command/Ctrl-Backspace.
+- The full multi-row deletion is one Undoable operation, and main/pop-out shortcut handling preserves the selected range until deletion.
+
 ### v0.6.211 — Merge Line Note Repair
 - Fixes replicated Line Note loss during Merge caused by a stale side-pane commit overwriting the newly merged row after row reconstruction.
 - Commits/closes an open inline Line Note before Merge and synchronizes the merged row without calling the commit-first `selectOne()` path.

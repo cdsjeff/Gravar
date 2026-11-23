@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.211 — Merge Line Note Repair
+Gravar v0.6.212 — Merge Note Dividers + Multi-Line Delete
 Single-file web app with modular internal architecture.
 
 Current release highlights:
@@ -27,6 +27,8 @@ Current release highlights:
 - Project Save now verifies whether the loaded V1 already exists in the active Project folder before writing media; restored/reconnected media is marked as already present, preventing unnecessary full-video rewrites that can stall playback.
 - Project-home navigation now uses the actual loaded Project JSON file handle as an explicit chooser anchor in Chrome/Edge; stale writable folder handles are cleared when projects close or a different project begins loading, preventing cross-project folder inheritance during repeated Load/Save cycles.
 - Merge now preserves Line Notes and merged Code values: any open inline Line Note is committed before rows are rebuilt, and the merged row is synchronized into the side pane without a stale post-merge commit overwriting its data.
+- When multiple Line Notes are included in a Merge, each note is preserved with a visible new-line / ----- / new-line divider between notes.
+- Delete now removes the full Shift-selected row range when multiple rows are selected; the entire deletion is one Undo operation. Single-row delete behavior remains unchanged.
 - Transcript-line Option-hover help now states that Option–Return splits the line at the text cursor into a new row below.
 - Contextual web tips require Option + hover on macOS (Alt + hover on non-Mac systems). Native browser title tooltips are globally suppressed so ordinary hover stays completely quiet in the main app and pop-outs.
 - Centralized current-version metadata used by title, About, Help, project metadata, and V-Clip metadata.
@@ -55,7 +57,7 @@ Primary UI/application modules:
 - XScrollSync
 - XApp
 
-Architecture note for v0.6.211:
+Architecture note for v0.6.212:
 - Cross-cutting rules are being moved from large UI modules into small single-responsibility services.
 - New cross-module behavior should prefer XBus messages or explicit service APIs over direct mutation of another UI module.
 - Project-state extensions should register with XProjectState rather than monkey-patching XFiles.payload().
@@ -64,7 +66,7 @@ Architecture note for v0.6.211:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.211 Standalone Web</title>
+<title>Gravar — Version 0.6.212 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -3201,7 +3203,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.211 — Standalone Web. Merge now preserves Line Notes and merged Code values by committing any open inline Line Note before rebuilding rows and synchronizing the side pane from the merged row without a stale post-merge commit.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.212 — Standalone Web. Merge preserves Line Notes and Code values; multiple merged Line Notes are separated by a new line, <code>-----</code>, and another new line. Delete removes the full Shift-selected row range as one Undoable operation.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3221,7 +3223,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.211 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.212 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3282,8 +3284,8 @@ input[type=reset],
 <h3>Transcript editing and timing</h3>
 <ul>
 <li><strong>Start / End:</strong> Command/Ctrl-[ sets Start; Command/Ctrl-] sets End. Command/Ctrl-click a Start or End field seeks to that time; Command/Ctrl-Option/Alt-click inserts current media time.</li>
-<li><strong>line↓ / line↑ / Delete:</strong> Command/Ctrl-Return adds a row below; Command/Ctrl-Shift-Return adds a row above; Command/Ctrl-Delete or Command/Ctrl-Backspace deletes the active row. The same commands work in the transcript pop-out.</li>
-<li><strong>Merge:</strong> merges selected contiguous rows. Line Notes and Code values from the merged transcript rows are preserved on the merged row. Comment rows and child metadata are handled separately from ordinary transcript row text.</li>
+<li><strong>line↓ / line↑ / Delete:</strong> Command/Ctrl-Return adds a row below; Command/Ctrl-Shift-Return adds a row above. Command/Ctrl-Delete or Command/Ctrl-Backspace deletes the active row; if multiple rows are Shift-selected, the entire selected range is deleted as one Undoable operation. The same commands work in the transcript pop-out.</li>
+<li><strong>Merge:</strong> merges selected contiguous rows. Line Notes and Code values from the merged transcript rows are preserved on the merged row. If multiple Line Notes are present, they are separated by a new line, <code>-----</code>, and another new line. Comment rows and child metadata are handled separately from ordinary transcript row text.</li>
 <li><strong>Drag reorder:</strong> drag the line-number cell up or down to reposition a row. All row data moves with it and line numbers renumber automatically.</li>
 <li><strong>sort-Start:</strong> in Transcript → Find &amp; Replace, sorts rows by Start time; blank Start rows move to the bottom and same-time rows keep their order.</li>
 <li><strong>Speaker field:</strong> right-justified with 10 px right padding. Speaker italic/color styling is inherited visually by the associated transcript line.</li>
@@ -3402,7 +3404,7 @@ input[type=reset],
 <button class="soft" id="insertDurations" title="Dur: create pause-duration rows between selected contiguous rows">Dur</button>
 <button class="soft" id="computeLineDurations" title="LineDur: compute each row duration from End minus Start">LineDur</button>
 <button class="soft" id="followLineToggle" title="Highlight the transcript row at the current video time">Follow</button>
-<button class="soft" id="deleteActiveLine" title="Delete the active transcript row: Command/Ctrl-Delete or Command/Ctrl-Backspace">Delete</button>
+<button class="soft" id="deleteActiveLine" title="Delete the active transcript row, or delete the full Shift-selected row range: Command/Ctrl-Delete or Command/Ctrl-Backspace">Delete</button>
 </div>
 <div class="grid5 midrow-controls">
 <button class="soft" id="addBelow" title="Insert transcript row below: Command/Ctrl-Return when the cursor is in a transcript row">line↓</button>
@@ -3782,6 +3784,7 @@ input[type=reset],
 /* Gravar V0.6.209: prevents unnecessary full-video rewrites during Project Save by verifying same-media files already present in the active Project folder and preserving project-folder media state across restore/reconnect. */
 /* Gravar V0.6.210: separates project navigation anchor state from writable Project-folder authority; loaded Project JSON file handles now explicitly seed chooser startIn, and stale writable folder handles are cleared on close/new load. */
 /* Gravar V0.6.211: repairs Merge Line Note/Code loss caused by stale side-pane commit after the merged row became active; inline Line Note is committed before merge and post-merge UI sync no longer re-commits stale side-pane fields. */
+/* Gravar V0.6.212: separates multiple merged Line Notes with <br>-----<br> and adds multi-line deletion for Shift-selected row ranges as one Undoable operation. */
 /* Gravar V0.6.208: uses a shared File System Access picker ID so Project Load establishes the remembered home directory for the next Save/Designate/Reconnect chooser in Chrome/Edge; adds Option-Return split-line guidance to transcript web tips. */
 /* Gravar V0.6.170: adds a Safari-specific Save As workflow and explains that imported-file folders cannot be reused as writable project folders. */
 /* Gravar V0.6.171: performs one final autosave at the 5-minute inactivity boundary before pausing; re-prompts for stale/missing Project-folder authorization on Save; synchronizes autosave numbering with the designated folder; and archives excess backups for every Gravar autosave series in that folder. */
@@ -3792,9 +3795,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.211',
+  version: '0.6.212',
   label: 'Standalone Web',
-  description: 'This build repairs Merge so Line Notes and merged Code values are not overwritten by stale side-pane state after rows are rebuilt. Any open inline Line Note is committed before Merge, and the merged row is synchronized into the side pane without invoking the commit-first selection path. Project-home state repair and Project Save media-reuse protections are preserved.',
+  description: 'This build preserves merged Line Notes and Code values, separates multiple merged Line Notes with a visible ----- divider on its own line, and deletes a Shift-selected row range as one Undoable multi-line operation. Project-home state repair and Project Save media-reuse protections are preserved.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -6065,25 +6068,61 @@ const XTranscript = {
     apply();
     requestAnimationFrame(apply);
   },
-  deleteRow(rowId){
-    const idx=XState.rows.findIndex(r=>r.id===rowId);
-    if(idx<0) return;
+  deleteRows(rowIds,options){
+    const ids=new Set((Array.isArray(rowIds)?rowIds:[]).filter(Boolean));
+    if(!ids.size) return 0;
 
-    XUndo.push('Delete line');
+    const indexed=XState.rows
+      .map((row,index)=>ids.has(row.id)?{row,index}:null)
+      .filter(Boolean);
+    if(!indexed.length) return 0;
+
+    // Commit any visible row-level editors before snapshotting/deleting so the
+    // Undo snapshot contains the latest Line Note / side-pane values.
+    if(typeof XLineNotePopdown!=='undefined' && XLineNotePopdown.opened && ids.has(XLineNotePopdown.rowId)){
+      XLineNotePopdown.close();
+    }
+    if(typeof XSidePane !== 'undefined' && typeof XSidePane.commitActiveFields === 'function'){
+      XSidePane.commitActiveFields({noUndo:true});
+    }
+
+    const count=indexed.length;
+    const firstIndex=indexed[0].index;
     const scroll=this.captureScroll();
+    XUndo.push(count>1 ? 'Delete '+count+' lines' : 'Delete line');
 
-    XState.rows.splice(idx,1);
+    XState.rows=XState.rows.filter(row=>!ids.has(row.id));
     this.ensureRow();
-    const next=XState.rows[Math.max(0,Math.min(idx,XState.rows.length-1))];
+
+    const nextIndex=Math.max(0,Math.min(firstIndex,XState.rows.length-1));
+    const next=XState.rows[nextIndex] || XState.rows[0];
+    XState.activeRowId=next ? next.id : '';
+    XState.selectedRowIds=new Set(next?[next.id]:[]);
+    XState.selectionAnchorId=next ? next.id : '';
+
+    if(typeof this.retagChildLines === 'function') this.retagChildLines();
     this.render();
-    this.selectOne(next.id);
+    this.markRows();
     this.restoreScroll(scroll);
+    if(typeof XSidePane !== 'undefined' && typeof XSidePane.sync === 'function') XSidePane.sync();
     XFiles.autosave();
+    if(typeof XTranscriptPopout !== 'undefined' && typeof XTranscriptPopout.syncSoon === 'function') XTranscriptPopout.syncSoon({forceRender:true});
+    XStatus.set(count>1 ? 'Deleted '+count+' selected rows.' : 'Deleted active transcript row.');
+    return count;
+  },
+  deleteRow(rowId){
+    // Row-specific delete controls remain intentionally single-row.
+    return this.deleteRows([rowId],{single:true});
   },
   deleteActiveRow(){
     const row=this.activeRow();
-    if(!row) return;
-    this.deleteRow(row.id);
+    if(!row) return 0;
+    const selected=(XState.selectedRowIds instanceof Set) ? XState.selectedRowIds : new Set();
+    if(selected.size>1 && selected.has(row.id)){
+      const orderedIds=XState.rows.filter(candidate=>selected.has(candidate.id)).map(candidate=>candidate.id);
+      return this.deleteRows(orderedIds);
+    }
+    return this.deleteRows([row.id],{single:true});
   },
 
   withSuppressedTimeFieldBlurCommit(callback){
@@ -6688,7 +6727,7 @@ const XTranscript = {
       speaker:firstTranscript.speaker||'',
       transcript:parts.join(' ').replace(/\s+/g,' ').trim(),
       talkAction:transcriptRows.map(r=>r.talkAction||'').filter(Boolean).join(' '),
-      notes:transcriptRows.map(r=>r.notes||'').filter(Boolean).join(' ')
+      notes:transcriptRows.map(r=>String(r.notes||'').trim()).filter(Boolean).join('<br>-----<br>')
     };
 
     XState.rows.splice(spanStart,spanEnd-spanStart+1,...liftedComments,merged);
@@ -22086,9 +22125,12 @@ send({type:'transcript-popout-ready'});
       if(data.type==='transcript-popout-command'){
         const row=data.rowId ? XState.rows.find(r=>r.id===data.rowId) : null;
         if(row){
+          const preserveSelectedRange=(data.command==='delete-row' || data.command==='merge') && XState.selectedRowIds instanceof Set && XState.selectedRowIds.size>1 && XState.selectedRowIds.has(row.id);
           XState.activeRowId=row.id;
-          XState.selectedRowIds=new Set([row.id]);
-          XState.selectionAnchorId=row.id;
+          if(!preserveSelectedRange){
+            XState.selectedRowIds=new Set([row.id]);
+            XState.selectionAnchorId=row.id;
+          }
           XTranscript.markRows();
           XSidePane.sync();
         }
@@ -22760,6 +22802,12 @@ const XDiagnostics = {
       const mergeSource=String(XTranscript.mergeSelected||'');
       this.add(mergeSource.includes('XLineNotePopdown.close()') ? 'PASS' : 'FAIL', 'Merge commits an open inline Line Note before rebuilding rows', 'Prevents an inline Line Note from remaining attached to a row that is removed by Merge.');
       this.add(!mergeSource.includes('this.selectOne(merged.id)') && mergeSource.includes('this.markRows()') ? 'PASS' : 'FAIL', 'Merge avoids stale post-merge side-pane commit', 'The merged row is marked and synced directly so old side-pane Line Note/Code values cannot overwrite merged data.');
+      this.add(mergeSource.includes("join('<br>-----<br>')") ? 'PASS' : 'FAIL', 'Multiple merged Line Notes use a visible divider', 'Each preserved Line Note is separated by a new line, -----, and another new line.');
+    }
+    {
+      const deleteSource=String(XTranscript.deleteActiveRow||'');
+      const deleteRowsSource=String(XTranscript.deleteRows||'');
+      this.add(deleteSource.includes('selected.size>1') && deleteRowsSource.includes("XUndo.push(count>1 ? 'Delete '+count+' lines'") ? 'PASS' : 'FAIL', 'Multiple selected rows delete as one Undoable operation', 'Shift-selected rows are removed together; one Undo snapshot restores the full block and its row metadata.');
     }
     this.add(this.functionExists(XTranscript.computeLineDurations), 'Compute transcript-line durations function is available',
       'LineDur overwrites each row duration from End minus Start, using millisecond-precision stored times while displaying rounded tenths.');
@@ -23153,12 +23201,22 @@ const XShortcuts = {
       if(deleteRowKey&&mod&&!e.shiftKey&&!e.altKey){
         const target=e.target;
         const inDrawingSurface=!!(target && target.closest && target.closest('.drawing-overlay,.drawing-object,.drawing-text-label'));
-        if(!inDrawingSurface && activateShortcutRow(e)){
-          consumeShortcut(e);
-          XTranscript.deleteActiveRow();
-          if(typeof XTranscriptPopout !== 'undefined' && typeof XTranscriptPopout.syncSoon === 'function') XTranscriptPopout.syncSoon();
-          XStatus.set('Deleted active transcript row.');
-          return;
+        if(!inDrawingSurface){
+          const rowId=rowIdFromShortcutTarget(e);
+          const multiSelected=!!(rowId && XState.selectedRowIds instanceof Set && XState.selectedRowIds.size>1 && XState.selectedRowIds.has(rowId));
+          if(multiSelected){
+            if(typeof XSidePane !== 'undefined' && typeof XSidePane.commitActiveFields === 'function') XSidePane.commitActiveFields({noUndo:true});
+            XState.activeRowId=rowId;
+            if(typeof XTranscript !== 'undefined' && typeof XTranscript.markRows === 'function') XTranscript.markRows();
+            consumeShortcut(e);
+            XTranscript.deleteActiveRow();
+            return;
+          }
+          if(activateShortcutRow(e)){
+            consumeShortcut(e);
+            XTranscript.deleteActiveRow();
+            return;
+          }
         }
       }
 
@@ -29021,7 +29079,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.211';
+  const EXPECTED_VERSION='0.6.212';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{
