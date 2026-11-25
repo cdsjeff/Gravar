@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 
 <!--
-Gravar v0.6.214 — Project Save Shortcut
+Gravar v0.6.215 — File Management Stability
 Single-file web app with modular internal architecture.
 
 Current release highlights:
+- File-management operation coordinator, verified directory identity, picker recovery, diagnostic history, and explicit recovery JSON download.
 - Native MacWhisper .dote transcript import.
 - Waveform calibration recovery/import from prior Gravar projects.
 - Selected-waveform onset/offset insertion for Command–Option waveform selection.
@@ -37,6 +38,7 @@ Current release highlights:
 
 Core services:
 - XBus — lightweight cross-module message bus
+- XFileCoordinator — exclusive project operations, picker tracking and recovery diagnostics
 - XAutosaveCoordinator — coalesced edit-recovery saves
 - XMediaIdentity — media identity and same-file matching
 - XCalibration — waveform calibration state and mathematics
@@ -59,7 +61,7 @@ Primary UI/application modules:
 - XScrollSync
 - XApp
 
-Architecture note for v0.6.214:
+Architecture note for v0.6.215:
 - Cross-cutting rules are being moved from large UI modules into small single-responsibility services.
 - New cross-module behavior should prefer XBus messages or explicit service APIs over direct mutation of another UI module.
 - Project-state extensions should register with XProjectState rather than monkey-patching XFiles.payload().
@@ -68,7 +70,7 @@ Architecture note for v0.6.214:
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Gravar — Version 0.6.214 Standalone Web</title>
+<title>Gravar — Version 0.6.215 Standalone Web</title>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <style>
 :root{
@@ -3111,6 +3113,11 @@ input[type=reset],
 <button id="runDiag" title="Run thorough diagnostics panel">Diagnostics</button>
 <button id="runStressTests" title="Run non-destructive stress tests followed by waveform stress tests, then restore the project afterward">Stress tests</button>
 <button id="clearDiag" title="Clear the diagnostic panel">Clear diag</button>
+<button id="fileFreshPicker" title="Arm the next native file or directory chooser to open without its previous Project home handle or picker ID; then retry Save, Load, Designate, or Reconnect.">Fresh picker</button>
+<button id="fileRecoveryDownload" title="Download a separate recovery Project JSON without selecting a Project folder or copying video. During a file operation, uses the stable snapshot captured before it began.">Recovery JSON</button>
+<button id="fileCopyReport" title="Copy the recent file-management operation history and browser exceptions; no transcript content is included.">Copy file diag</button>
+<button id="fileViewReport" title="Display the file-management operation history and browser errors.">File report</button>
+<textarea id="fileManagementReport" class="hidden" readonly style="grid-column:1/-1;width:100%;min-height:110px;font:10px monospace;white-space:pre;" aria-label="File management diagnostic report"></textarea>
 </div>
 <div class="files-submenu-panel files-autosave-panel" data-files-panel="auto">
 <div class="controls-section-title"><span>Autosave</span></div>
@@ -3205,7 +3212,7 @@ input[type=reset],
 <div class="info-popup-body">
 <div class="left-pane-title"><span class="left-pane-title-text">About</span><button class="pane-help-btn" data-pane-help="about" title="About pane help">?</button></div>
 <p><strong>Gravar</strong> is a browser-based video transcription workspace for detailed interaction analysis. It is designed for timed transcript construction while viewing video, inspecting the audio waveform, and recording line-level talk/action notes.</p>
-<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.214 — Standalone Web. Shift-Command-S on macOS (Shift-Ctrl-S on non-Mac systems) now invokes the same Project Save workflow as Files → Project → Save, including the existing Project-folder verification behavior. The shortcut is documented in Save web tips and Help.</p>
+<p id="aboutCurrentVersion"><strong>Current version:</strong> Gravar 0.6.215 — Standalone Web. Shift-Command-S on macOS (Shift-Ctrl-S on non-Mac systems) now invokes the same Project Save workflow as Files → Project → Save, including the existing Project-folder verification behavior. The shortcut is documented in Save web tips and Help. This stability release adds coordinated file operations, verified folder identity, and Files → Diag recovery controls.</p>
 <p>The app runs locally in the browser as a single HTML file. Project data is saved separately as JSON, with optional TSV/CSV export for use in spreadsheets or other analysis tools.</p>
 <p>Major functions include video loading, waveform navigation, transcript rows with Start/End/Speaker fields, editable transcript pop-out, video pop-out, transcript pop-out, symbol insertion, autosave, TSV/CSV/RTF export, and diagnostics.</p>
 <h3>License</h3>
@@ -3225,7 +3232,7 @@ input[type=reset],
 <button class="soft" id="downloadFormattedHelp" title="Download the updated Help/User Manual as a formatted, scrollable HTML file that documents current Gravar features and can be printed or saved as PDF.">Download User Manual</button>
 </div>
 <h3>Gravar help guide and user manual</h3>
-<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.214 — Standalone Web.</p>
+<p id="helpCurrentVersion"><strong>Current version:</strong> Gravar 0.6.215 — Standalone Web.</p>
 <p><strong>Gravar</strong> is a browser-based workspace for detailed video/audio transcription and interaction analysis. It combines synchronized media playback, transcript timing, waveform inspection, transcript-linked coding, comments, group/span indicators, pop-out displays, project saving, and structured exports in a single local HTML application.</p>
 <h3>Basic workflow</h3>
 <ol>
@@ -3237,6 +3244,8 @@ input[type=reset],
 <li>Save the project JSON often. Use <strong>Shift-Command-S</strong> on macOS or <strong>Shift-Ctrl-S</strong> on non-Mac systems to invoke the same Project Save workflow as Files → Project → Save. On Chrome/Edge, each manual Save opens the Project-folder chooser before writing so you can verify the location. Autosaves remain automatic and do not open a picker. The saved project includes the active Code, Symbols, and Group palettes, styled code markers, group ranges, comments, project note, transcript styles, and child-line tags.</li>
 <li>Use <strong>Files → Export</strong> for TSV, XLS, ELAN, RTF, Project Note, Comments, and Transcript+Comment. Use <strong>Video → V-Clip</strong> for start/end-time JSON specifications for external clip makers.</li>
 </ol>
+<h3>File management recovery</h3>
+<p>Gravar completes one project file operation at a time. If a native chooser is still open, finish or cancel it before retrying. If a chooser fails, open Files → Diag → Fresh picker, then click Save, Load, Designate or Reconnect again. This removes the previous explicit navigation anchor and picker ID for one attempt; the browser still controls the starting folder. Confirm the correct directory. Recovery JSON explicitly downloads a separate project JSON without changing folder authorization or copying media. Copy file diag records recent operations and actual browser exceptions; send it to the lab developer. Reports contain project and file names but not transcript text. A pending operating-system chooser cannot be forcibly closed by Gravar.</p>
 <h3>Web tips</h3>
 <p><strong>Option + hover</strong> shows contextual web tips on macOS. Ordinary hover is completely quiet: Gravar suppresses the browser's native light-grey <code>title</code> tooltips and uses the stored help text only through its own web-tip system. If the pointer is already over a control, press and hold <strong>Option</strong> to show its tip immediately; release Option or move the pointer away to hide it. On non-Mac systems, use <strong>Alt + hover</strong>. Command is not required for web tips. This convention applies to buttons, fields, transcript/timing controls, waveform/video controls, and the Video and Transcript pop-out windows. It does not change Command/Ctrl click or drag shortcuts.</p>
 <h3>Workspace map</h3>
@@ -3800,9 +3809,9 @@ input[type=reset],
 ========================= */
 const XBuild = Object.freeze({
   appName: 'Gravar',
-  version: '0.6.214',
+  version: '0.6.215',
   label: 'Standalone Web',
-  description: 'This build adds Shift-Command-S on macOS (Shift-Ctrl-S on non-Mac systems) as a Project Save shortcut. It routes through the existing XFiles.saveProject() workflow, preserving Project-folder verification, media-reuse protection, and browser-specific Save behavior. The shortcut is included in Save web tips and Help.',
+  description: 'File Management Stability: serializes project operations, verifies remembered folder identity, coordinates native pickers, prevents autosave folder writes during another project operation, and adds a diagnostic report, fresh-picker retry and explicit recovery JSON download. Shift-Command-S / Shift-Ctrl-S remains Project Save.',
   title(){
     return this.appName+' — Version '+this.version+' '+this.label;
   },
@@ -8944,7 +8953,7 @@ const XSymbols = {
     XStatus.set('Symbol set loaded: '+symbolCount+' symbol'+(symbolCount===1?'':'s')+' and '+sectionCount+' section'+(sectionCount===1?'':'s')+'.');
   },
 
-  loadSymbolSetFile(file){
+  async loadSymbolSetFile(file){
     if(!file) return;
     const reader=new FileReader();
     reader.onload=e=>{
@@ -8957,10 +8966,17 @@ const XSymbols = {
         XStatus.set('Symbol-set load failed.');
       }
     };
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
 
-  async importSymbolSetFromFilePicker(){
+  importSymbolSetFromFilePicker(){if(!window.showOpenFilePicker){if(XFileCoordinator.active||XFileCoordinator.picker)return XFileCoordinator.busy('Import palette');if(XDom.symbolSetFile)XDom.symbolSetFile.click();return;}return XFileCoordinator.run('importSymbolSetFromFilePicker',()=>this.importSymbolSetFromFilePickerInternal(),{snapshot:true});},
+
+  async importSymbolSetFromFilePickerInternal(){
     XStatus.set('Choose a reusable Symbols JSON from your shared Codes/Symbols folder.');
     try{
       if(window.showOpenFilePicker){
@@ -8969,20 +8985,22 @@ const XSymbols = {
           types:[{description:'Gravar symbol-set JSON', accept:{'application/json':['.json']}}]
         };
         if(XState.codesSymbolsDirHandle) pickerOptions.startIn=XState.codesSymbolsDirHandle;
-        const [handle]=await window.showOpenFilePicker(pickerOptions);
+        const [handle]=await XFileCoordinator.pick('showOpenFilePicker',pickerOptions);
         if(!handle) return;
         const file=await handle.getFile();
-        this.loadSymbolSetFile(file);
+        await this.loadSymbolSetFile(file);
         return;
       }
     }catch(err){
       if(err && err.name==='AbortError'){ XStatus.set('Symbol import cancelled.'); return; }
-      console.warn('Symbol file picker failed; falling back to file input.', err);
+      XFileCoordinator.error('Symbol import',err);XStatus.set('Symbol import failed. Use Fresh picker and retry.');return;
     }
     if(XDom.symbolSetFile) XDom.symbolSetFile.click();
   },
 
-  async exportSymbolSetToFilePicker(){
+  exportSymbolSetToFilePicker(){return XFileCoordinator.run('exportSymbolSetToFilePicker',()=>this.exportSymbolSetToFilePickerInternal(),{snapshot:true});},
+
+  async exportSymbolSetToFilePickerInternal(){
     XStatus.set('Choose where to save the reusable Symbols JSON, such as your shared Codes/Symbols folder.');
     const payload=this.symbolSetPayload();
     const json=JSON.stringify(payload,null,2);
@@ -9003,7 +9021,7 @@ const XSymbols = {
           types:[{description:'Gravar symbol-set JSON', accept:{'application/json':['.json']}}]
         };
         if(XState.codesSymbolsDirHandle) pickerOptions.startIn=XState.codesSymbolsDirHandle;
-        const handle=await window.showSaveFilePicker(pickerOptions);
+        const handle=await XFileCoordinator.pick('showSaveFilePicker',pickerOptions);
         const writable=await handle.createWritable();
         await writable.write(new Blob([json],{type:'application/json;charset=utf-8'}));
         await writable.close();
@@ -9040,7 +9058,7 @@ const XSymbols = {
     if(XDom.importSymbolSet) XDom.importSymbolSet.onclick=()=>this.importSymbolSetFromFilePicker();
     if(XDom.exportSymbolSet) XDom.exportSymbolSet.onclick=()=>this.exportSymbolSetToFilePicker();
     if(XDom.symbolSetFile) XDom.symbolSetFile.onchange=e=>{
-      this.loadSymbolSetFile(e.target.files[0]);
+      const file=e.target.files[0];if(file) XFileCoordinator.run('Import palette',()=>this.loadSymbolSetFile(file),{snapshot:true});
       e.target.value='';
     };
   }
@@ -9773,7 +9791,7 @@ const XTalkActionPalette = {
     XStatus.set('Code code set loaded: '+codeCount+' code'+(codeCount===1?'':'s')+' and '+sectionCount+' section'+(sectionCount===1?'':'s')+'. Existing row-level Code codes were not changed.');
   },
 
-  loadCodeSetFile(file){
+  async loadCodeSetFile(file){
     if(!file) return;
     const reader=new FileReader();
     reader.onload=e=>{
@@ -9786,10 +9804,17 @@ const XTalkActionPalette = {
         XStatus.set('Code code-set load failed.');
       }
     };
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
 
-  async importCodeSetFromFilePicker(){
+  importCodeSetFromFilePicker(){if(!window.showOpenFilePicker){if(XFileCoordinator.active||XFileCoordinator.picker)return XFileCoordinator.busy('Import palette');if(XDom.talkCodeSetFile)XDom.talkCodeSetFile.click();return;}return XFileCoordinator.run('importCodeSetFromFilePicker',()=>this.importCodeSetFromFilePickerInternal(),{snapshot:true});},
+
+  async importCodeSetFromFilePickerInternal(){
     XStatus.set('Choose a reusable Code JSON from your shared Codes/Symbols folder.');
     try{
       if(window.showOpenFilePicker){
@@ -9798,20 +9823,22 @@ const XTalkActionPalette = {
           types:[{description:'Gravar code-set JSON', accept:{'application/json':['.json']}}]
         };
         if(XState.codesSymbolsDirHandle) pickerOptions.startIn=XState.codesSymbolsDirHandle;
-        const [handle]=await window.showOpenFilePicker(pickerOptions);
+        const [handle]=await XFileCoordinator.pick('showOpenFilePicker',pickerOptions);
         if(!handle) return;
         const file=await handle.getFile();
-        this.loadCodeSetFile(file);
+        await this.loadCodeSetFile(file);
         return;
       }
     }catch(err){
       if(err && err.name==='AbortError'){ XStatus.set('Code import cancelled.'); return; }
-      console.warn('Code file picker failed; falling back to file input.', err);
+      XFileCoordinator.error('Code import',err);XStatus.set('Code import failed. Use Fresh picker and retry.');return;
     }
     if(XDom.talkCodeSetFile) XDom.talkCodeSetFile.click();
   },
 
-  async exportCodeSetToFilePicker(){
+  exportCodeSetToFilePicker(){return XFileCoordinator.run('exportCodeSetToFilePicker',()=>this.exportCodeSetToFilePickerInternal(),{snapshot:true});},
+
+  async exportCodeSetToFilePickerInternal(){
     XStatus.set('Choose where to save the reusable Code JSON, such as your shared Codes/Symbols folder.');
     const payload=this.codeSetPayload();
     const json=JSON.stringify(payload,null,2);
@@ -9832,7 +9859,7 @@ const XTalkActionPalette = {
           types:[{description:'Gravar code-set JSON', accept:{'application/json':['.json']}}]
         };
         if(XState.codesSymbolsDirHandle) pickerOptions.startIn=XState.codesSymbolsDirHandle;
-        const handle=await window.showSaveFilePicker(pickerOptions);
+        const handle=await XFileCoordinator.pick('showSaveFilePicker',pickerOptions);
         const writable=await handle.createWritable();
         await writable.write(new Blob([json],{type:'application/json;charset=utf-8'}));
         await writable.close();
@@ -9863,7 +9890,7 @@ const XTalkActionPalette = {
     if(XDom.importTalkCodeSet) XDom.importTalkCodeSet.onclick=()=>this.importCodeSetFromFilePicker();
     if(XDom.exportTalkCodeSet) XDom.exportTalkCodeSet.onclick=()=>this.exportCodeSetToFilePicker();
     if(XDom.talkCodeSetFile) XDom.talkCodeSetFile.onchange=e=>{
-      this.loadCodeSetFile(e.target.files[0]);
+      const file=e.target.files[0];if(file) XFileCoordinator.run('Import palette',()=>this.loadCodeSetFile(file),{snapshot:true});
       e.target.value='';
     };
   }
@@ -12817,7 +12844,9 @@ const XVideo = {
     },0);
   },
 
-  async captureFrameClip(mode){
+  captureFrameClip(mode){return XFileCoordinator.run('Frame clip',()=>this.captureFrameClipInternal(mode),{snapshot:true});},
+
+  async captureFrameClipInternal(mode){
     mode=mode || 'v1';
     try{
       if(!this.validateFrameClipMode(mode)) return;
@@ -14375,7 +14404,7 @@ const XPaneHelp = {
 
   help(){
     return {
-      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','A single persistent Project name field is always visible at the bottom of the Files pane on Project, Import, Export, Diag, and Auto. It sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','These controls appear directly below the selected Project tab; there is no second Project accordion/header. Shift-Command-S on macOS (Shift-Ctrl-S on non-Mac systems) invokes the same Project Save workflow as the Save button. In Chrome/Edge, Load retains the actual selected Project JSON file handle as a navigation anchor. Later Save, Designate, or Reconnect choosers use that handle to start in the JSON file’s containing directory until the user explicitly authorizes a writable Project folder. Close Project and each new Project Load clear the prior project’s writable folder handle, preventing one project from inheriting another project’s save location. If Chrome has a remembered same-name Project folder, Gravar validates that it actually contains the current Project JSON before reusing it. Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration. Before Save writes any V1 media, Gravar checks whether the same video is already present in the authorized Project folder; matching media is reused rather than rewritten, keeping ordinary project saves JSON-only whenever possible.'],['Project files','Appears below Codes & Symbols in Files → Project and is collapsed by default. Click the Project files header to open it. It shows Project JSON, transcript source, V1, V2, and audio with ✓ Loaded/Saved, ± Reference, ✕ Missing/Failed, or — None. Click any pathname to show a wrapped, selectable pathname below the list. Use Path: Last 3 / Path: Full to toggle the display. Full means the fullest path Gravar can know; ordinary web browsers often hide the macOS /Users/... absolute path, so Project-folder-relative or filename-only locations may be shown.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video / Load V2','Loads local V1/V2 media. In Chrome/Edge, these media pickers now start in the folder containing the currently loaded Project JSON, or in the explicitly authorized Project folder when available, rather than inheriting the browser’s generic file-input location such as Downloads. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
+      files: {title:'Files pane help', preamble:'The Files pane manages project identity, file loading, reusable code/symbol sets, imports, exports, diagnostics, and autosave behavior. It is organized into click-selected submenus: Project, Import, Export, Diag, and Auto. Project files still save the active Code and Symbols palettes, but reusable Code and Symbols sets can also be imported/exported as independent JSON files. Workspace Setup can create shared Codes-Symbols, FrameClips, VideoClips, and Projects folders.', items:[['Submenu row','Use Project, Import, Export, Diag, and Auto to switch the visible Files controls without leaving the Files pane.'],['Project name','A single persistent Project name field is always visible at the bottom of the Files pane on Project, Import, Export, Diag, and Auto. It sets the base name used for project JSON, autosaves, and export filenames.'],['Project row: Load / Save / Close / Designate / Reconnect / Setup','These controls appear directly below the selected Project tab; there is no second Project accordion/header. Shift-Command-S on macOS (Shift-Ctrl-S on non-Mac systems) invokes the same Project Save workflow as the Save button. In Chrome/Edge, Load retains the actual selected Project JSON file handle as a navigation anchor. Later Save, Designate, or Reconnect choosers use that handle to start in the JSON file’s containing directory until the user explicitly authorizes a writable Project folder. Close Project and each new Project Load clear the prior project’s writable folder handle, preventing one project from inheriting another project’s save location. If Chrome has a remembered same-name Project folder, Gravar validates that it actually contains the current Project JSON before reusing it. Reconnect is normally hidden. When a loaded project remembers a Project folder that Gravar cannot currently access, Reconnect appears. Approving it restores folder access and automatically searches that folder for saved V1, V2, and external-audio filenames without clearing waveform calibration. Before Save writes any V1 media, Gravar checks whether the same video is already present in the authorized Project folder; matching media is reused rather than rewritten, keeping ordinary project saves JSON-only whenever possible.'],['Project files','Appears below Codes & Symbols in Files → Project and is collapsed by default. Click the Project files header to open it. It shows Project JSON, transcript source, V1, V2, and audio with ✓ Loaded/Saved, ± Reference, ✕ Missing/Failed, or — None. Click any pathname to show a wrapped, selectable pathname below the list. Use Path: Last 3 / Path: Full to toggle the display. Full means the fullest path Gravar can know; ordinary web browsers often hide the macOS /Users/... absolute path, so Project-folder-relative or filename-only locations may be shown.'],['Codes & Symbols row','Imports or exports reusable Code and Symbols JSON files. After Workspace Setup, exports go directly to the Codes-Symbols folder and imports open there when the browser supports it. Project JSON still saves the current Codes and Symbols automatically.'],['Import codes / Export codes','Imports or exports the current Code palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, so it does not persistently store a code-symbol folder. Existing row-level Code values are not changed by importing a new Code palette.'],['Import symbols / Export symbols','Imports or exports the current Symbols palette as a reusable JSON file. Gravar asks the user to choose the file or save location each time, while each project still saves its own current Symbols palette.'],['Load video / Load V2','Loads local V1/V2 media. In Chrome/Edge, these media pickers now start in the folder containing the currently loaded Project JSON, or in the explicitly authorized Project folder when available, rather than inheriting the browser’s generic file-input location such as Downloads. If automatic project media restore fails, use Project → Reconnect first when offered; Gravar will search the approved Project folder for V1, V2, and external audio. Manually reloading the same saved V1 also preserves calibration, while a different V1 resets it. MP4/H.264/AAC remains the safest browser-compatible format.'],['Load TSV / Append project / Load ELAN TSV','Load TSV replaces current transcript rows. Append project adds rows from another Gravar project JSON while preserving row formatting, Code values, Line Notes, and timing precision. Load ELAN TSV transforms ELAN Tier/Speaker/Onset/Offset/Annotation rows into timed transcript rows.'],['Waveform calibration','Files → Import → Waveform calibration opens the same calibration-recovery file chooser as Wave → Waveform calibration → Import. It imports only saved waveform alignment/calibration from an older Gravar project JSON and leaves the current transcript, media assignment, codes, notes, and other project settings unchanged.'],['Export TSV / XLS / RTF / Project Note / Comments / Transcript+Comment / ELAN','Exports transcript, comments, Project Note, spreadsheet-readable, V-CLIP JSON, or ELAN files. TSV is plain text, XLS opens in Excel with rich-text styling and hidden gridlines, RTF preserves formatted text, ELAN creates an .eaf file. V-Clip is now located in the Video tools beside Fr-Clip and saves a start/end-time JSON spec for an external clip maker; after Workspace Setup it saves to VideoClips/[Project], otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs. Project-folder saving is preferred for the other export formats when available.'],['Diagnostics / Stress tests / Clear diag','Runs status checks and non-destructive stress tests. Stress tests exercise core functions and waveform behavior, then report results in the diagnostic panel.'],['Fresh picker / Recovery JSON / Copy file diag','If a native chooser fails, select Fresh picker and retry the desired action. The next picker omits the old anchor and ID. Recovery JSON downloads a separate JSON without copying media or changing the folder. Copy file diag collects recent operation history and browser errors; File report shows it. Finish or cancel any still-pending chooser first.'],['Autosave','Controls autosave interval and how many numbered autosaves to keep before older files move to Old_files. Autosaves use the Project folder when available. After 5 minutes without typing, clicking, or video playback, Gravar performs one final autosave and then pauses until activity resumes.']]},
       wave: {title:'Wave pane help', preamble:'The Wave pane controls waveform visibility, fixed time-frame display, temporary waveform nudging, saved calibration, and waveform drag interval tools. The calibration system has three separate layers: a temporary Wave± nudge, a saved absolute offset, and saved calibration points for drift. Drag interval tools help measure time spans or create transcript rows; calibration tools change the displayed waveform mapping only and do not alter the video or audio file.', items:[['Choose a usable view first','Set Frame to 10 sec or 5 sec for most calibration work. Use 2 sec when you need very fine alignment around a sharp sound. Use Whole video only for orientation.'],['Find clear alignment events','Use sharp acoustic landmarks: word onsets, loud syllables, taps, claps, clicks, or abrupt noises. Avoid long vowels, background noise, or ambiguous speech edges.'],['Amp− / Amp+','Adjust visual waveform height so peaks are readable. This changes display amplitude only.'],['Frame selector','Choose Whole video, 1 min, 30 sec, 10 sec, 5 sec, or 2 sec. Fixed frames show that amount of time around the current video time.'],['Vspeed selector','Choose the repeat speed for held frame-step buttons. This replaces the old persistent Vspeed transport button and uses the same frame-rate choices.'],['Waveform click','Seeks within the visible waveform frame. In Whole video mode the click maps across the full duration; in fixed-frame modes it maps within the visible time window.'],['Plain waveform drag','Scrubs the video at the current Vspeed pace while measuring a waveform interval, shows the duration on a compact bar just above the bottom scrub area, and copies the duration in seconds to the clipboard on release.'],['Command/Ctrl waveform drag','Scrubs the video at the current Vspeed pace while dragging and creates a new transcript row from the dragged waveform interval. The new row receives Start, End, and Duration and is placed chronologically by Start time.']], sections:[{title:'Procedure 1: Temporary local nudge without saving calibration', items:[['Purpose','Use this when you only need to inspect or code one local section and do not want to change the saved calibration model.'],['Step 1','Move to the location you want to inspect and choose a short frame such as 10 sec, 5 sec, or 2 sec.'],['Step 2','Use Wave− or Wave+ until the waveform peak visually lines up with the sound you hear. Each click moves the displayed waveform by 0.1 sec.'],['Step 3','Code or inspect that section. Do not click Abs or Pt.'],['Step 4','Click 0 when you want to remove only this temporary nudge. Saved absolute offset and saved calibration points are not changed.']]},{title:'Procedure 2: Set an absolute beginning offset', items:[['Purpose','Use this when the waveform is already early or late near the beginning of the file. This creates a constant baseline correction that applies throughout the recording.'],['Step 1','Go near the beginning of the recording, preferably within the first 10 to 30 seconds.'],['Step 2','Choose a short waveform frame, usually 10 sec or 5 sec.'],['Step 3','Find a clear acoustic landmark.'],['Step 4','Use Wave− or Wave+ until the waveform and sound align at that beginning location.'],['Step 5','Click Abs. Gravar saves the current temporary nudge as the absolute offset and resets the temporary Wave± nudge to 0.0 sec.'],['Rule','Use Abs for the beginning/global sync problem. Do not use Abs repeatedly across the video; later changes should be saved with Pt.']]},{title:'Procedure 3: Add a single drift point', items:[['Purpose','Use this when the beginning is aligned but the waveform becomes increasingly early or late later in the video.'],['Step 1','After setting Abs if needed, move to a later point where drift is visible, such as 5, 10, or 15 minutes.'],['Step 2','Choose a short frame such as 10 sec, 5 sec, or 2 sec and find a clear sound event.'],['Step 3','Use Wave− or Wave+ until the waveform aligns at that later location.'],['Step 4','Click Pt. Gravar saves a calibration point at the current video time using the current temporary nudge as the remaining local correction, then resets the temporary nudge to 0.0 sec.'],['Result','With one saved point, the residual drift correction grows toward that point rather than applying the same shift everywhere. Saved Point corrections are cumulative and are not limited by the temporary ±4-second Wave± nudge range.']]},{title:'Procedure 4: Build nonlinear multipoint calibration', items:[['Purpose','Use this when drift is not a single straight line across the recording. Multiple Pt values create piecewise interpolation between saved points.'],['Step 1','Set the beginning absolute offset first with Abs if the beginning is out of sync.'],['Step 2','Move to the first later problem area, align with Wave− or Wave+, then click Pt.'],['Step 3','Move farther ahead, align again with Wave− or Wave+, then click Pt.'],['Step 4','Repeat at each area where the waveform and sound diverge. Useful checkpoints for a 19-minute video are about 5:00, 10:00, 15:00, and 18:00.'],['Result','Gravar interpolates between saved points. If the correction changes direction or rate across the file, the waveform mapping can bend rather than follow one linear slope.'],['Tip','Points can be added in any order; Gravar sorts them by time internally. On long recordings, saved corrections may accumulate beyond ±4 seconds even though each temporary Wave± adjustment is limited to ±4 seconds.']]},{title:'Procedure 5: Check the calibration after setting points', items:[['Step 1','Reset the temporary Wave± nudge to 0.0 sec with the 0 button.'],['Step 2','Check several places between your saved points, not just at the points themselves.'],['Step 3','If the waveform is good at saved points but off between them, add another Pt between the two problem areas.'],['Step 4','If the whole file is consistently shifted by the same amount after calibration, adjust near the beginning and save a new Abs.'],['Step 5','If only one local area is off, add or update a Pt at that local time.']]},{title:'Procedure 6: Clear and restart calibration', items:[['Temporary reset','Click 0 to clear only the temporary Wave± nudge. This does not erase saved Abs or Pt calibration.'],['Undo last Point','Click Undo to reverse only the most recent Pt command. Gravar restores the prior saved point set and the temporary Wave± nudge used for that Point.'],['Full saved calibration reset','Click Clear to clear the saved absolute offset and all saved calibration points. The temporary Wave± nudge is left independent.'],['Recommended restart','After Clr, set the beginning sync with Abs, then add Pt values only where later drift is visible.']]}]},
       video: {title:'Video pane help', preamble:'The Video pane contains tools for main-window video display and the synchronized Video pop-out. The pop-out can optionally attach compact transport controls and a longer waveform so the analyst can keep video, waveform, and playback control in one visual field.', items:[['Fr-Clip','Opens a V1 / V2 / Both menu. V1 or V2 captures that video frame as a PNG; Both captures V1 and V2 together. After Workspace Setup, PNGs save to FrameClips/[Project] and add a clickable link in Project Note; otherwise Gravar uses the Project folder or download fallback.'],['V-Clip','Exports a JSON clip specification for the selected transcript interval or active row. The spec includes start/end times plus FFmpeg-ready crop, scale, brightness, contrast, color, and RGB filter recipes for reproducing the current zoomed/panned display. After Workspace Setup, specs save to VideoClips/[Project]; otherwise the first V-Clip export in a session asks for a V-Clip folder used only for V-Clip specs.'],['V1 visible / V2 visible','Shows or hides V1 or V2 in the main video pane without unloading media or changing playback, timing, waveform, or pop-out behavior.'],['Video Pop','Toggles the synchronized Video pop-out on and off. The pop-out is muted; audio and timing remain controlled by the main app.'],['Stack','Stacks V1 above V2 in both the main video pane and the Video pop-out. Uncheck it for side-by-side display in both places.'],['Controls','Attaches compact transport controls and a longer waveform to the Video pop-out. Transport/timing controls sit to the left of the waveform; compact unlabeled Video/Display/Waveform control rows sit to the right and send the same commands to the main app. The pop-out no longer has its own Controls button; turn attached controls off/on from the main Video pane.'],['Direct video gestures','Command/Ctrl-drag on a video zooms, plain drag pans after zooming, Command/Ctrl-Option/Alt-drag scrubs, and double-click resets zoom/pan.'],['Pop-out shortcuts','In the Video pop-out, F toggles fullscreen, Shift-Space plays/pauses, Command/Ctrl-Left/Right moves by 0.1 sec, and Command/Ctrl-Shift-Left/Right jumps by 1 sec.']]},
       ca: {title:'CA pane help', preamble:'The CA pane contains Conversation Analysis controls for parent/child tiers and copied transcript style buttons.', items:[['Child tiers','When Child tiers is checked, rows whose Transcript text begins with (( are child tiers under the nearest prior parent tier, rows beginning with a single ( are parent tiers, and italic Speaker rows can also be child tiers. When Child tiers is off, parentheses are ordinary transcript text and rows retain their own timecodes.'],['Force PT timecodes','When checked, child tiers under a parent tier are forced to use that parent tier’s Start/Stop/Dur values, including child tiers marked with double parentheses. When unchecked, child tiers retain their own Start/Stop/Dur values; merely becoming a child tier does not replace their timing.'],['Style buttons','B, I, color, and Clear use the same rich-text formatting functions as the Transcript pane.']]},
@@ -14551,6 +14580,7 @@ const XActivity = {
   async checkAutosaveIdle(){
     if(!XState.autosaveEnabled || XState.autosaveMinutes<=0) return;
     if(XState.autosavePausedForIdle || XState.autosaveIdleFinalizing) return;
+    if(XFileCoordinator.active||XFileCoordinator.picker)return;
     if(this.isVideoPlaying()){
       this.mark('video playback');
       return;
@@ -14602,6 +14632,60 @@ const XActivity = {
 ========================= */
 
 
+const XFileCoordinator = {
+  active:null, picker:null, events:[], freshNext:false, nextId:0, recovery:null, localDeferred:false,
+  record(event, detail={}){
+    const entry=Object.assign({at:new Date().toISOString(),event,operation:this.active?this.active.name:'none',project:String(XState.projectName||''),folder:String(XState.dataDirName||'')},detail);
+    this.events.push(entry); if(this.events.length>200) this.events.shift();
+    // Keep only operational metadata in session storage; never store transcript text here.
+    try{sessionStorage.setItem('gravar-file-events-215',JSON.stringify(this.events));}catch(e){}
+    return entry;
+  },
+  error(stage, err){return this.record('error',{stage,errorName:String(err&&err.name||'Error'),message:String(err&&err.message||err||'Unknown error')});},
+  restoreHistory(){try{const old=JSON.parse(sessionStorage.getItem('gravar-file-events-215')||'[]'); if(Array.isArray(old)) this.events=old.slice(-200);}catch(e){} this.record('session started',{build:XBuild.version});},
+  busy(name){
+    this.record('blocked',{requested:name,active:this.active?this.active.name:(this.picker?this.picker.name:'picker')});
+    XStatus.set('File management is busy: '+(this.active?this.active.name:'native chooser')+'. Finish or cancel that operation, then retry.');
+    return false;
+  },
+  snapshot(){
+    const payload=XFiles.payload(); payload.videoEmbedded=false; payload.videoDataUrl=''; payload.audioEmbedded=false; payload.audioDataUrl='';
+    return {json:JSON.stringify(payload,null,2),filename:XFiles.projectBaseName()+'-recovery.json'};
+  },
+  async run(name, task, opts={}){
+    if(this.active||this.picker) return this.busy(name);
+    const token={id:++this.nextId,name,started:Date.now()}; this.active=token;this.recovery=null;
+    this.record('begin',{id:token.id,userActivation:navigator.userActivation?.isActive??null});
+    try{
+      if(opts.snapshot){try{this.recovery=this.snapshot();}catch(e){this.recovery=null;this.error('recovery snapshot',e);}}
+      return await task();
+    }catch(e){this.error(name,e); XStatus.set(name+' failed: '+(e.name||'Error')+' — '+(e.message||e)); return false;}
+    finally{this.record('end',{id:token.id,elapsedMs:Date.now()-token.started}); if(this.active===token) this.active=null;if(this.localDeferred){this.localDeferred=false;if(XState.autosaveEnabled)XFiles.autosave(false);}}
+  },
+  async pick(name, options={}){
+    if(this.picker){const e=new Error('Another native chooser is still open. Finish or cancel it first.');e.name='PickerBusyError';this.error(name,e);throw e;}
+    const opts=Object.assign({},options); const fresh=this.freshNext;
+    if(fresh){delete opts.startIn; delete opts.id; this.freshNext=false;}
+    const token={name,started:Date.now()};this.picker=token;
+    this.record('picker begin',{picker:name,anchor:opts.startIn?String(opts.startIn.kind||'handle')+':'+String(opts.startIn.name||''):'none',fresh,userActivation:navigator.userActivation?.isActive??null});
+    const timer=setTimeout(()=>{if(this.picker===token){this.record('picker still pending',{picker:name,elapsedMs:Date.now()-token.started});XStatus.set('Native chooser is still pending. Check for a hidden system dialog; use Files → Diag for recovery if necessary.');}},15000);
+    try{const result=await window[name](opts);this.record('picker selected',{picker:name,selected:Array.isArray(result)?result.map(h=>h.name):result?.name||''});return result;}
+    catch(e){if(e&&e.name==='AbortError') this.record('picker cancelled',{picker:name});else this.error(name,e);throw e;}
+    finally{clearTimeout(timer);this.record('picker end',{picker:name,elapsedMs:Date.now()-token.started});if(this.picker===token)this.picker=null;}
+  },
+  retryFresh(){if(this.active||this.picker)return this.busy('fresh picker');this.freshNext=true;this.record('fresh picker armed');XStatus.set('Next native chooser will open without the previous project anchor or picker ID. Click Save, Load, Designate, or Reconnect again.');},
+  emergency(){
+    try{const snap=this.active?this.recovery:this.snapshot();if(!snap){alert('No stable recovery snapshot is available during this operation. Finish or cancel it, then try again.');return;}
+      if(!confirm('Download a separate recovery Project JSON'+(this.active?' from before the current operation':' of the current project')+'? This will not change the Project folder or copy media.'))return;
+      XUtils.download(snap.json,snap.filename,'application/json;charset=utf-8');this.record('recovery download',{filename:snap.filename});XStatus.set('Recovery JSON download requested: '+snap.filename+' (browser controls destination).');
+    }catch(e){this.error('recovery download',e);alert('Recovery download failed: '+e.message);}
+  },
+  report(){return JSON.stringify({build:XBuild.version,browser:navigator.userAgent,secureContext:window.isSecureContext,project:XState.projectName,folder:XState.dataDirName,source:XState.projectHomeFileName||'',active:this.active,picker:this.picker,freshNext:this.freshNext,events:this.events},null,2);},
+  showReport(){const box=document.getElementById('fileManagementReport');box.value=this.report();box.classList.remove('hidden');box.focus();box.select();},
+  async copyReport(){this.showReport();try{await navigator.clipboard.writeText(document.getElementById('fileManagementReport').value);XStatus.set('File diagnostic report copied.');}catch(e){XStatus.set('Diagnostic report selected. Press Command/Ctrl-C to copy.');}},
+  bind(){this.restoreHistory();document.getElementById('fileFreshPicker').onclick=()=>this.retryFresh();document.getElementById('fileRecoveryDownload').onclick=()=>this.emergency();document.getElementById('fileCopyReport').onclick=()=>this.copyReport();document.getElementById('fileViewReport').onclick=()=>this.showReport();}
+};
+
 const XFolderStore = {
   dbName:'gravar-folder-store',
   storeName:'folders',
@@ -14627,10 +14711,13 @@ const XFolderStore = {
     if(window.gravarDesktopFs && window.gravarDesktopFs.isElectron===true) return false;
     try{
       const db=await this.open();
+      const candidates=await this.recordsForName(handle.name,db);
+      let key='project-folder-entry::'+(globalThis.crypto?.randomUUID?.()||Date.now()+'-'+Math.random());
+      for(const r of candidates){try{if(await handle.isSameEntry(r.handle)){key=r.key;break;}}catch(e){XFileCoordinator.error('compare remembered folders',e);}}
       await new Promise((resolve,reject)=>{
         const tx=db.transaction(this.storeName,'readwrite');
         tx.objectStore(this.storeName).put({
-          key:this.keyForName(handle.name),
+          key,
           name:handle.name,
           handle,
           savedAt:new Date().toISOString()
@@ -14647,25 +14734,26 @@ const XFolderStore = {
     }
   },
 
+  async recordsForName(name,db){
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(this.storeName,'readonly');
+      const request=tx.objectStore(this.storeName).getAll();
+      request.onsuccess=()=>resolve((request.result||[]).filter(r=>r.name===name&&r.handle));
+      request.onerror=()=>reject(request.error||new Error('Could not retrieve Project folders.'));
+    });
+  },
   async retrieveProjectFolder(name){
-    const clean=String(name||'').trim();
-    if(!clean) return null;
-    let db=null;
-    try{
-      db=await this.open();
-      const record=await new Promise((resolve,reject)=>{
-        const tx=db.transaction(this.storeName,'readonly');
-        const request=tx.objectStore(this.storeName).get(this.keyForName(clean));
-        request.onsuccess=()=>resolve(request.result||null);
-        request.onerror=()=>reject(request.error||new Error('Could not retrieve Project folder.'));
-      });
-      db.close();
-      return record && record.handle ? record.handle : null;
-    }catch(err){
-      if(db){ try{ db.close(); }catch(closeErr){} }
-      console.warn('Could not retrieve remembered Project folder handle.',err);
+    const clean=String(name||'').trim();if(!clean||!XState.projectHomeFileHandle)return null;
+    let db;
+    try{db=await this.open();const records=await this.recordsForName(clean,db);
+      for(const r of records){
+        const relationship=await XFiles.projectSourceRelationshipToDirectory(r.handle);
+        if(relationship===true){XFileCoordinator.record('remembered folder verified',{candidate:clean});return r.handle;}
+        XFileCoordinator.record('remembered folder rejected',{candidate:clean,relationship});
+      }
       return null;
-    }
+    }catch(e){XFileCoordinator.error('remembered folder lookup',e);return null;}
+    finally{if(db)db.close();}
   }
 };
 
@@ -15101,7 +15189,7 @@ const XFiles = {
       }
       return true;
     }catch(err){
-      console.warn('Directory permission check failed.', err);
+      XFileCoordinator.error('directory permission check',err);console.warn('Directory permission check failed.', err);
       return false;
     }
   },
@@ -15152,7 +15240,9 @@ const XFiles = {
     return true;
   },
 
-  async establishWorkspaceSetup(){
+  establishWorkspaceSetup(){return XFileCoordinator.run('Workspace setup',()=>this.establishWorkspaceSetupInternal(),{snapshot:true});},
+
+  async establishWorkspaceSetupInternal(){
     if(!window.showDirectoryPicker){
       alert('This browser does not support creating workspace folders from this context. Chrome or Edge usually provide the needed File System Access API.');
       XStatus.set('Workspace setup unavailable in this browser.');
@@ -15164,7 +15254,7 @@ const XFiles = {
 
     try{
       XStatus.set('Choose a parent folder for the new Gravar workspace.');
-      const parentHandle=await window.showDirectoryPicker({mode:'readwrite'});
+      const parentHandle=await XFileCoordinator.pick('showDirectoryPicker',{mode:'readwrite'});
       const parentPermitted=await this.verifyDirectoryPermission(parentHandle);
       if(!parentPermitted) throw new Error('Parent folder write permission was not granted.');
 
@@ -15213,6 +15303,7 @@ const XFiles = {
   },
 
   closeProject(){
+    if(XFileCoordinator.active||XFileCoordinator.picker)return XFileCoordinator.busy('Close project');
     if(!confirm('Close the current project and start a blank project? Unsaved changes will be lost.')) return;
     XAutosaveCoordinator.cancel();
 
@@ -15520,10 +15611,12 @@ const XFiles = {
     return options;
   },
 
-  async openProjectMediaFromHomePicker(role){
+  openProjectMediaFromHomePicker(role){return XFileCoordinator.run('Load media '+role,()=>this.openProjectMediaFromHomePickerInternal(role),{snapshot:true});},
+
+  async openProjectMediaFromHomePickerInternal(role){
     if(typeof window.showOpenFilePicker!=='function') return false;
     try{
-      const [handle]=await window.showOpenFilePicker(this.projectMediaOpenFilePickerOptions());
+      const [handle]=await XFileCoordinator.pick('showOpenFilePicker',this.projectMediaOpenFilePickerOptions());
       if(!handle) return false;
       const file=await handle.getFile();
       if(!file) return false;
@@ -15535,13 +15628,28 @@ const XFiles = {
         XStatus.set(role==='v2' ? 'Secondary video load cancelled.' : 'Video load cancelled.');
         return false;
       }
-      console.warn('Project-aware video picker failed; falling back to the standard file input.',err);
-      const input=role==='v2' ? XDom.secondaryVideoFile : XDom.videoFile;
-      if(input) input.click();
+      XFileCoordinator.error('media open '+role,err);
+      XStatus.set('Video open failed: '+(err.name||'Error')+'. Use Files → Diag → Fresh picker, then load the video again.');
       return false;
     }
   },
 
+  clearPreviousProjectMedia(data){
+    XVideo.stopSegmentPlayback(); XVideo.stopRepeat();
+    if(typeof XVideoPopout!=='undefined')XVideoPopout.close();
+    if(typeof XTranscriptPopout!=='undefined')XTranscriptPopout.close();
+    for(const prefix of ['video','secondaryVideo','audio']){
+      const url=XState[prefix+'Url'];if(url){try{URL.revokeObjectURL(url);}catch(e){}}
+      XState[prefix+'Url']=null;XState[prefix+'Blob']=null;
+      XState[prefix+'Name']=String(data[prefix+'Name']||'');XState[prefix+'Key']=String(data[prefix+'Key']||'');XState[prefix+'Type']=String(data[prefix+'Type']||'');
+      const el=XDom[prefix];if(el){el.pause();el.removeAttribute('src');el.load();if(prefix!=='audio')el.style.display='none';}
+    }
+    XState.secondaryVideoEnabled=false;XState.audioEnabled=false;
+    XState.waveformBuildToken=(Number(XState.waveformBuildToken)||0)+1;
+    XState.wavePeaks=[];XWaveform.resetCalibration({keepDisplay:true});XWaveform.empty('Load video for waveform');
+    if(XDom.videoMsg)XDom.videoMsg.style.display='block';
+    XStatus.file('No video loaded');XVideo.updateDualVideoLayout();
+  },
   beginProjectLoadLocation(fileHandle){
     // A writable directory handle belongs to one active project only. Never
     // carry it into another Project Load. The selected JSON file handle is
@@ -15556,32 +15664,32 @@ const XFiles = {
     XState.lastProjectVideoSaveBytes=0;
     XState.preferProjectHomePickerOnNextFolderChoice=false;
     XState.projectHomeFileHandle=fileHandle||null;
+    XState.frameClipDirHandle=null;XState.frameClipDirName='';XState.videoClipDirHandle=null;XState.videoClipDirName='';
     XState.projectHomeFileName=fileHandle && fileHandle.name ? String(fileHandle.name) : '';
     this.setReconnectProjectFolderVisible(false);
     if(XDom.dataFolderStatus) XDom.dataFolderStatus.textContent='Project folder not authorized';
   },
 
-  async openProjectFromHomePicker(){
+  openProjectFromHomePicker(){return XFileCoordinator.run('Load project',()=>this.openProjectFromHomePickerInternal(),{snapshot:true});},
+
+  async openProjectFromHomePickerInternal(){
     if(typeof window.showOpenFilePicker!=='function'){
       if(XDom.projectFile) XDom.projectFile.click();
       return false;
     }
     try{
-      const [handle]=await window.showOpenFilePicker(this.projectOpenFilePickerOptions());
+      const [handle]=await XFileCoordinator.pick('showOpenFilePicker',this.projectOpenFilePickerOptions());
       if(!handle) return false;
       const file=await handle.getFile();
       if(!file) return false;
-      this.beginProjectLoadLocation(handle);
-      await this.alignProjectFolderToImportedFile(file);
-      this.loadProject(file);
-      return true;
+      return await this.loadProject(file,handle);
     }catch(err){
       if(err && err.name==='AbortError'){
         XStatus.set('Project load cancelled.');
         return false;
       }
-      console.warn('Project file picker failed; falling back to the standard project input.',err);
-      if(XDom.projectFile) XDom.projectFile.click();
+      XFileCoordinator.error('project open',err);
+      XStatus.set('Project open failed: '+(err.name||'Error')+'. Use Files → Diag → Fresh picker, then Load again.');
       return false;
     }
   },
@@ -15600,10 +15708,10 @@ const XFiles = {
   async queryProjectFolderPermission(directoryHandle){
     if(!directoryHandle) return 'unavailable';
     try{
-      if(typeof directoryHandle.queryPermission === 'function') return await directoryHandle.queryPermission({mode:'readwrite'});
+      if(typeof directoryHandle.queryPermission === 'function'){const permission=await directoryHandle.queryPermission({mode:'readwrite'});XFileCoordinator.record('folder permission',{candidate:directoryHandle.name,permission});return permission;}
       return 'granted';
     }catch(err){
-      console.warn('Project folder permission query failed.',err);
+      XFileCoordinator.error('folder permission query',err);console.warn('Project folder permission query failed.',err);
       return 'unavailable';
     }
   },
@@ -15634,7 +15742,7 @@ const XFiles = {
       // which the current Project JSON was actually opened.
       return Array.isArray(relative) && relative.length===1;
     }catch(err){
-      console.warn('Could not compare remembered Project folder with loaded Project JSON source.',err);
+      XFileCoordinator.error('verify source directory',err);console.warn('Could not compare remembered Project folder with loaded Project JSON source.',err);
       return null;
     }
   },
@@ -15670,7 +15778,7 @@ const XFiles = {
       let rememberedHandle=await XFolderStore.retrieveProjectFolder(rememberedName);
       if(rememberedHandle){
         const relationship=await this.projectSourceRelationshipToDirectory(rememberedHandle);
-        if(relationship===false){
+        if(relationship!==true){
           console.warn('Rejected stale remembered Project folder handle because it does not contain the currently loaded Project JSON source file.');
           rememberedHandle=null;
         }
@@ -15755,7 +15863,9 @@ const XFiles = {
     return restored;
   },
 
-  async reconnectProjectFolder(){
+  reconnectProjectFolder(){return XFileCoordinator.run('Reconnect folder',()=>this.reconnectProjectFolderInternal(),{snapshot:true});},
+
+  async reconnectProjectFolderInternal(){
     if(!this.hasDirectFolderAccess()){
       this.showSafariSaveGuidance(true);
       return;
@@ -15764,14 +15874,15 @@ const XFiles = {
     let handle=XState.projectReconnectHandle||null;
 
     try{
+      if(XFileCoordinator.freshNext) handle=null;
       if(handle && typeof handle.requestPermission==='function'){
         const permission=await handle.requestPermission({mode:'readwrite'});
-        if(permission!=='granted') handle=null;
+        if(permission!=='granted'){XState.projectReconnectHandle=null;XStatus.set('Folder permission was not granted. Click Reconnect again to choose a folder.');return;}
       }
 
       if(!handle){
         XStatus.set(expected ? 'Choose the saved Project folder: '+expected : 'Choose the Project folder for this project.');
-        handle=await window.showDirectoryPicker(this.projectHomeDirectoryPickerOptions());
+        handle=await XFileCoordinator.pick('showDirectoryPicker',this.projectHomeDirectoryPickerOptions());
         const permission=await this.verifyDirectoryPermission(handle);
         if(!permission) throw new Error('Project folder permission was not granted.');
       }
@@ -15810,7 +15921,8 @@ const XFiles = {
       }
       console.error(err);
       this.setReconnectProjectFolderVisible(true,expected);
-      alert('Could not reconnect the Project folder. Choose the folder that contains this project and its saved media files.');
+      XFileCoordinator.error('reconnect folder',err);
+      alert('Could not reconnect the Project folder: '+(err.name||'Error')+' — '+(err.message||err)+'. Use Fresh picker and retry; verify the folder contains this project.');
       XStatus.set('Project-folder reconnect failed.');
     }
   },
@@ -15826,11 +15938,7 @@ const XFiles = {
         const current=await XState.dataDirHandle.queryPermission(options);
         if(current === 'granted') return true;
       }
-      if(typeof XState.dataDirHandle.requestPermission === 'function'){
-        const requested=await XState.dataDirHandle.requestPermission(options);
-        return requested === 'granted';
-      }
-      return true;
+      return typeof XState.dataDirHandle.queryPermission!=='function';
     }catch(err){
       console.warn('Project folder permission check failed.', err);
       return false;
@@ -15854,7 +15962,7 @@ const XFiles = {
 
     if(promptIfMissing && window.showDirectoryPicker){
       XStatus.set('Designate the Project folder for this project. The same folder will be used for manual saves, autosaves, and Old_files.');
-      await this.chooseDataFolder();
+      await this.chooseDataFolderInternal();
       if(XState.dataDirHandle){
         return await this.verifyProjectFolderPermission();
       }
@@ -15867,10 +15975,11 @@ const XFiles = {
     if(!XState.dataDirHandle) throw new Error('No project folder selected.');
     const permitted=await this.verifyProjectFolderPermission();
     if(!permitted) throw new Error('Project folder write permission was not granted.');
-    const handle=await XState.dataDirHandle.getFileHandle(filename,{create:true});
+    const directory=XState.dataDirHandle;
+    if(!directory)throw new Error('Project folder was disconnected.');
+    const handle=await directory.getFileHandle(filename,{create:true});
     const writable=await handle.createWritable();
-    await writable.write(text);
-    await writable.close();
+    try{await writable.write(text);await writable.close();}catch(e){try{await writable.abort();}catch(ignore){}throw e;}
   },
 
   async writeBlobFileToDataFolder(filename, blob){
@@ -15878,13 +15987,16 @@ const XFiles = {
     if(!blob) throw new Error('No file data available.');
     const permitted=await this.verifyProjectFolderPermission();
     if(!permitted) throw new Error('Project folder write permission was not granted.');
-    const handle=await XState.dataDirHandle.getFileHandle(filename,{create:true});
+    const directory=XState.dataDirHandle;
+    if(!directory)throw new Error('Project folder was disconnected.');
+    const handle=await directory.getFileHandle(filename,{create:true});
     const writable=await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
+    try{await writable.write(blob);await writable.close();}catch(e){try{await writable.abort();}catch(ignore){}throw e;}
   },
 
-  async saveExportFile(filename, content, mimeType, label, options){
+  saveExportFile(filename, content, mimeType, label, options){return XFileCoordinator.run('Export file',()=>this.saveExportFileInternal(filename, content, mimeType, label, options),{snapshot:true});},
+
+  async saveExportFileInternal(filename, content, mimeType, label, options){
     const opts=options || {};
     const promptIfMissing=opts.promptIfMissing !== false;
     const useUniqueName=!!opts.unique;
@@ -15996,7 +16108,7 @@ const XFiles = {
       }
       if(XDom.saveProject){
         XDom.saveProject.textContent='Save…';
-        XDom.saveProject.title="Open the Project-folder chooser first, verify the target location, then save the project JSON there. Shortcut: Shift-Command-S on macOS; Shift-Ctrl-S on non-Mac systems. After loading a Project JSON in Chrome/Edge, this chooser starts in the directory containing that Project JSON (or the currently authorized Project folder). Autosave remains automatic and does not open a chooser.";
+        XDom.saveProject.title="Open the Project-folder chooser first, verify the target location, then save the project JSON there. Shortcut: Shift-Command-S on macOS; Shift-Ctrl-S on non-Mac systems. After loading a Project JSON in Chrome/Edge, this chooser starts in the directory containing that Project JSON (or the currently authorized Project folder). Autosave remains automatic and does not open a chooser. If the picker fails, use Files → Diag → Fresh picker and retry, or Recovery JSON.";
       }
       return;
     }
@@ -16026,14 +16138,17 @@ const XFiles = {
     XStatus.set('Safari save workflow: use Save As… and choose the team project folder in the download dialog.');
   },
 
-  async chooseDataFolder(){
+  chooseDataFolder(){return XFileCoordinator.run('Designate folder',()=>this.chooseDataFolderInternal(),{snapshot:true});},
+
+  async chooseDataFolderInternal(){
     if(!this.hasDirectFolderAccess()){
       this.showSafariSaveGuidance(true);
       return;
     }
 
     try{
-      const handle=await window.showDirectoryPicker(this.projectHomeDirectoryPickerOptions());
+      const handle=await XFileCoordinator.pick('showDirectoryPicker',this.projectHomeDirectoryPickerOptions());
+      if(!(await this.verifyDirectoryPermission(handle))) throw new DOMException('Selected directory is not writable.','NotAllowedError');
       XState.dataDirHandle=handle;
       XState.dataDirName=handle.name||'selected folder';
       XState.projectExpectedFolderName=XState.dataDirName;
@@ -16063,8 +16178,9 @@ const XFiles = {
         return;
       }
       console.error(err);
-      alert('Could not select the project folder. Save Project will use a normal download instead.');
-      XStatus.set('Project folder selection failed; using download fallback.');
+      XFileCoordinator.error('designate folder',err);
+      alert('Could not select the project folder: '+(err.name||'Error')+' — '+(err.message||err)+'. Use Fresh picker and retry.');
+      XStatus.set('Project folder selection failed; no new folder authorized.');
     }
   },
 
@@ -16076,7 +16192,7 @@ const XFiles = {
 
     XStatus.set('Choose or verify the Project folder for this manual Save. No project data will be written until a folder is selected.');
     try{
-      const handle=await window.showDirectoryPicker(pickerOptions);
+      const handle=await XFileCoordinator.pick('showDirectoryPicker',pickerOptions);
       if(!handle) return {supported:true,selected:false,cancelled:true};
 
       let sameFolder=false;
@@ -16088,6 +16204,7 @@ const XFiles = {
         }
       }
 
+      if(!(await this.verifyDirectoryPermission(handle))) throw new DOMException('Selected directory is not writable.','NotAllowedError');
       await this.activateProjectFolderHandle(handle,{sync:false});
       if(!sameFolder) XState.projectVideoSavedName='';
       if(typeof XProjectFiles!=='undefined') XProjectFiles.render();
@@ -16101,12 +16218,15 @@ const XFiles = {
       }
       console.error('Project-folder chooser failed before manual Save.',err);
       XStatus.set('Could not open the Project-folder chooser; project was not saved.');
-      alert('Could not open the Project-folder chooser. The project was not saved.');
+      XFileCoordinator.error('manual Save folder selection/authorization',err);
+      alert('Project folder selection failed: '+(err.name||'Error')+' — '+(err.message||err)+'. No project JSON was written. Use Files → Diag → Fresh picker, then Save again; or Recovery JSON to download a separate copy.');
       return {supported:true,selected:false,error:err};
     }
   },
 
-  async saveProject(){
+  saveProject(){return XFileCoordinator.run('Manual Save',()=>this.saveProjectInternal(),{snapshot:true});},
+
+  async saveProjectInternal(){
     try{
       if(XDom.projectName) XState.projectName=XDom.projectName.value.trim();
 
@@ -16140,7 +16260,8 @@ const XFiles = {
         let copiedVideo=false;
         try{ copiedVideo=await this.saveLoadedVideoToProjectFolder(); }catch(videoErr){ console.warn('Could not copy video to project folder.',videoErr); }
         if(typeof XProjectFiles!=='undefined'){
-          XProjectFiles.fromProjectFolder('project',filename,'saved','Project JSON saved after manual target-folder verification');
+          // Serialize destination metadata; mark the live status as saved only after the write closes.
+          XProjectFiles.fromProjectFolder('project',filename,'saved','Project JSON target verified');
           if(copiedVideo) XProjectFiles.fromProjectFolder('v1',XState.videoName,'loaded','V1 present in verified Project folder');
           payload=this.payload();
           payload.videoEmbedded=false;
@@ -16148,8 +16269,12 @@ const XFiles = {
           payload.audioEmbedded=false;
           payload.audioDataUrl='';
           json=JSON.stringify(payload,null,2);
+          XProjectFiles.fromProjectFolder('project',filename,'referenced','Project JSON write pending');
         }
         await this.writeTextFileToDataFolder(filename,json);
+        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromProjectFolder('project',filename,'saved','Project JSON written successfully');
+        XFileCoordinator.record('project JSON written',{filename});
+        try{XState.projectHomeFileHandle=await XState.dataDirHandle.getFileHandle(filename,{create:false});XState.projectHomeFileName=filename;}catch(e){XFileCoordinator.error('refresh saved JSON anchor',e);}
         try{ await this.synchronizeAutosaveFolderState(); }catch(syncErr){ console.warn('Project saved, but autosave-folder synchronization failed.',syncErr); }
         XStatus.set('Project saved to verified Project folder: '+XState.dataDirName+'/'+filename+(copiedVideo?' ; video present: '+XState.videoName:'.')+' Autosaves and Old_files are aligned with this folder.');
         return;
@@ -16157,18 +16282,23 @@ const XFiles = {
 
       // Browsers without direct directory access cannot guarantee a folder picker.
       // Preserve their normal Save As/download flow and explain the limitation.
-      if(!this.hasDirectFolderAccess()) this.showSafariSaveGuidance(false);
+      if(this.hasDirectFolderAccess()){throw new DOMException('Selected folder is no longer writable. Use Fresh picker or Recovery JSON.','NotAllowedError');}
+      this.showSafariSaveGuidance(false);
       XUtils.download(json,filename,'application/json;charset=utf-8');
       if(typeof XProjectFiles!=='undefined') XProjectFiles.set('project',{name:filename,path:filename,status:'saved',detail:'Project JSON downloaded; browser controls the destination path',scope:'name-only'});
       XStatus.set('Project downloaded. Choose the intended project folder in the browser Save As/download dialog. Autosave folder behavior is unchanged.');
     }catch(err){
       console.error(err);
-      alert('Could not save project data. No alternate silent folder save was attempted.');
+      XFileCoordinator.error('manual Save write',err);
+      if(typeof XProjectFiles!=='undefined') XProjectFiles.set('project',{status:'failed',detail:'Project Save failed: '+(err.message||err)});
+      alert('Could not save project data: '+(err.name||'Error')+' — '+(err.message||err)+'. Use Files → Diag → Recovery JSON if needed. No alternate folder save was attempted.');
       XStatus.set('Save project data failed.');
     }
   },
 
-  async saveProjectWithVideo(){
+  saveProjectWithVideo(){return XFileCoordinator.run('Portable Save',()=>this.saveProjectWithVideoInternal(),{snapshot:true});},
+
+  async saveProjectWithVideoInternal(){
     try{
       if(XDom.projectName) XState.projectName=XDom.projectName.value.trim();
       const payload=await this.payloadWithVideo();
@@ -16366,16 +16496,19 @@ const XFiles = {
     return false;
   },
 
-  loadProject(file){
-    if(!file) return;
-    XAutosaveCoordinator.cancel();
-    if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'loading','Reading Gravar project JSON');
-    const reader=new FileReader();
-    reader.onload=async e=>{
+  async loadProject(file,sourceHandle=null){
+    if(!file) return false;
+    let started=false;
       try{
-        const data=JSON.parse(e.target.result);
+        const data=JSON.parse(await file.text());
         const rows=Array.isArray(data)?data:data.rows;
         if(!Array.isArray(rows)) throw new Error('No rows');
+        XAutosaveCoordinator.cancel();
+        this.beginProjectLoadLocation(sourceHandle);
+        started=true;
+        this.clearPreviousProjectMedia(data);
+        await this.alignProjectFolderToImportedFile(file);
+        XFileCoordinator.record('project parsed',{filename:file.name,rows:rows.length});
         if(typeof XProjectFiles!=='undefined'){
           XState.projectFilePathMode=data.projectFilePathMode==='full'?'full':'short';
           XProjectFiles.setReferencedFromProject(data);
@@ -16568,18 +16701,15 @@ const XFiles = {
           XStatus.set('Project transcript loaded. '+(canReconnect ? 'Use Reconnect to authorize '+rememberedProjectFolder+' and let Gravar search for '+data.videoName+', V2, and external audio. ' : 'Reload or convert video manually if needed: '+data.videoName+'. ')+'Reattaching the same V1 will preserve saved waveform calibration.');
         }
         XBus.emit('project:loaded',{data,file,videoRestored,secondaryRestored,audioRestored});
+        XFileCoordinator.record('project restoration completed',{filename:file.name,videoRestored,secondaryRestored,audioRestored});
+        return true;
       }catch(err){
-        console.error(err);
-        if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'failed','Project JSON could not be loaded');
-        alert('Could not load project.');
+        XFileCoordinator.error('project load/restore',err);
+        if(started&&typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'failed','Project JSON could not be fully loaded');
+        alert('Could not load project: '+(err.message||err)+'. '+(started?'Check the project before saving.':'The previous project was not replaced.'));
         XStatus.set('Project load failed.');
+        return false;
       }
-    };
-    reader.onerror=()=>{
-      if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('project',file,'failed','Project JSON could not be read');
-      XStatus.set('Project load failed: file could not be read.');
-    };
-    reader.readAsText(file);
   },
 
   normalizeProjectRowsForAppend(data){
@@ -16637,7 +16767,7 @@ const XFiles = {
     return {added, sections};
   },
 
-  appendProject(file){
+  async appendProject(file){
     if(!file) return;
     const reader=new FileReader();
     reader.onload=e=>{
@@ -16684,7 +16814,12 @@ const XFiles = {
         XStatus.set('Append project failed.');
       }
     };
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
   async exportCsv(){
     if(typeof XSidePane !== 'undefined') XSidePane.commitActiveFields({noUndo:true});
@@ -17328,7 +17463,7 @@ const XFiles = {
       return false;
     }
     XStatus.set('Choose a folder for V-CLIP JSON specs. This folder is separate from the Project folder and is used only for V-CLIP specs this session.');
-    const handle=await window.showDirectoryPicker({mode:'readwrite'});
+    const handle=await XFileCoordinator.pick('showDirectoryPicker',{mode:'readwrite'});
     XState.videoClipDirHandle=handle;
     XState.videoClipDirName=handle.name || 'selected V-CLIP folder';
     return await this.verifyVideoClipFolderPermission();
@@ -17371,7 +17506,9 @@ const XFiles = {
     return {savedToFolder:false, filename};
   },
 
-  async exportVideoClip(){
+  exportVideoClip(){return XFileCoordinator.run('V-Clip export',()=>this.exportVideoClipInternal(),{snapshot:true});},
+
+  async exportVideoClipInternal(){
     try{
       const spec=this.buildVideoClipSpec();
       const filename=this.videoClipSpecFilename(spec);
@@ -17453,7 +17590,7 @@ const XFiles = {
     if(match) return 'Spkr '+match[1];
     return raw;
   },
-  importDote(file){
+  async importDote(file){
     if(!file) return;
     if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing DOTE transcript');
     const reader=new FileReader();
@@ -17577,14 +17714,24 @@ const XFiles = {
       if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'failed','DOTE file could not be read');
       XStatus.set('DOTE import failed: could not read '+(file.name||'file')+'.');
     };
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
-  importElanTsv(file){
+  async importElanTsv(file){
     if(!file) return;
     if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing ELAN TSV transcript');
     const reader=new FileReader();
     reader.onload=e=>this.importElanTsvText(String(e.target.result||''), file.name || 'ELAN TSV', file);
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
   looksLikeTranscriptTier(tier){
     const t=String(tier||'').toLowerCase();
@@ -17894,7 +18041,7 @@ const XFiles = {
     };
     reader.readAsText(file);
   },
-  importTsv(file){
+  async importTsv(file){
     if(!file) return;
     if(typeof XProjectFiles!=='undefined') XProjectFiles.fromFile('transcript',file,'loading','Importing TSV transcript');
     const reader=new FileReader();
@@ -17906,7 +18053,12 @@ const XFiles = {
         this.importTsvText(text, file);
       }
     };
-    reader.readAsText(file);
+    return await new Promise((resolve,reject)=>{
+      const handler=reader.onload;reader.onload=async e=>{try{resolve(await handler(e));}catch(err){reject(err);}};
+      reader.onerror=()=>reject(reader.error||new Error('File read failed.'));
+      reader.onabort=()=>reject(new DOMException('File read cancelled.','AbortError'));
+      reader.readAsText(file);
+    });
   },
   normalizeTime(v){
     const t=String(v||'').trim();
@@ -18227,7 +18379,7 @@ const XFiles = {
     localStorage.setItem('gravar-autosave-backup-limit', String(XState.autosaveBackupLimit));
     if(XState.autosaveBackupLimit>0){
       XStatus.set('Autosave archive limit set to keep '+XState.autosaveBackupLimit+' newest numbered backup'+(XState.autosaveBackupLimit===1?'':'s')+' in the Project folder; older backups move to Old_files.');
-      if(XState.dataDirHandle) this.archiveOldAutosaveBackups();
+      if(XState.dataDirHandle&&!XFileCoordinator.active&&!XFileCoordinator.picker) XFileCoordinator.run('Autosave archive',async()=>{if(await this.queryProjectFolderPermission(XState.dataDirHandle)==='granted')await this.archiveOldAutosaveBackups();});
     }else{
       XStatus.set('Autosave archive limit set to unlimited numbered backups in the Project folder.');
     }
@@ -18559,6 +18711,15 @@ const XFiles = {
   },
 
   async performAutosave(writeFolderBackup, options){
+    if(XFileCoordinator.active||XFileCoordinator.picker){
+      XFileCoordinator.record('autosave deferred',{folderBackup:!!writeFolderBackup});
+      XFileCoordinator.localDeferred=true;
+      return false;
+    }
+    if(!writeFolderBackup)return this.performAutosaveInternal(false,options);
+    return XFileCoordinator.run('Autosave',()=>this.performAutosaveInternal(true,options),{snapshot:true});
+  },
+  async performAutosaveInternal(writeFolderBackup, options){
     if(!XState.autosaveEnabled || XState.autosaveMinutes <= 0) return false;
     const opts=options || {};
 
@@ -18571,7 +18732,7 @@ const XFiles = {
       XState.autosaveLastSavedAt=new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit', second:'2-digit'});
       XState.autosaveLastSavedAtMs=Date.now();
 
-      if(writeFolderBackup && XState.dataDirHandle){
+      if(writeFolderBackup && XState.dataDirHandle && await this.queryProjectFolderPermission(XState.dataDirHandle)==='granted'){
         XState.autosaveCount=(XState.autosaveCount||0)+1;
         await this.ensureOldFilesFolder();
         await this.archiveLegacyAutosaveFiles();
@@ -18591,6 +18752,7 @@ const XFiles = {
       return true;
     }catch(err){
       if(XDom.autosaveStatus) XDom.autosaveStatus.textContent=opts.idleFinal ? 'Final inactivity autosave failed' : 'Autosave failed';
+      XFileCoordinator.error('autosave write',err);
       console.warn('Autosave failed', err);
       return false;
     }
@@ -18676,6 +18838,14 @@ const XFiles = {
   },
 
   bind(){
+    XFileCoordinator.bind();
+    document.addEventListener('click',ev=>{
+      const el=ev.target.closest&&ev.target.closest('label[for],input[type=file]');
+      const id=el&&(el.getAttribute('for')||el.id);
+      if(id&&document.getElementById(id)?.type==='file'&&(XFileCoordinator.active||XFileCoordinator.picker)){
+        ev.preventDefault();ev.stopImmediatePropagation();XFileCoordinator.busy('File import');
+      }
+    },true);
     if(XDom.loadVideoButton){
       XDom.loadVideoButton.addEventListener('click',ev=>{
         if(typeof window.showOpenFilePicker!=='function') return;
@@ -18694,23 +18864,20 @@ const XFiles = {
     }
     XDom.videoFile.onchange=async e=>{
       const file=e.target.files[0];
-      await this.alignProjectFolderToImportedFile(file);
-      await XVideo.load(file);
+      if(file) await XFileCoordinator.run('Import media',async()=>{await this.alignProjectFolderToImportedFile(file);await XVideo.load(file);},{snapshot:true});
       e.target.value='';
     };
     if(XDom.secondaryVideoFile){
       XDom.secondaryVideoFile.onchange=async e=>{
         const file=e.target.files[0];
-        await this.alignProjectFolderToImportedFile(file);
-        await XVideo.loadSecondary(file);
+        if(file) await XFileCoordinator.run('Import media',async()=>{await this.alignProjectFolderToImportedFile(file);await XVideo.loadSecondary(file);},{snapshot:true});
         e.target.value='';
       };
     }
     if(XDom.audioFile){
       XDom.audioFile.onchange=async e=>{
         const file=e.target.files[0];
-        await this.alignProjectFolderToImportedFile(file);
-        await XVideo.loadAudio(file);
+        if(file) await XFileCoordinator.run('Import media',async()=>{await this.alignProjectFolderToImportedFile(file);await XVideo.loadAudio(file);},{snapshot:true});
         e.target.value='';
       };
     }
@@ -18724,36 +18891,31 @@ const XFiles = {
     }
     XDom.projectFile.onchange=async e=>{
       const file=e.target.files[0];
-      this.beginProjectLoadLocation(null);
-      await this.alignProjectFolderToImportedFile(file);
-      await this.loadProject(file);
+      if(file) await XFileCoordinator.run('Load project',()=>this.loadProject(file),{snapshot:true});
       e.target.value='';
     };
     XDom.tsvFile.onchange=async e=>{
       const file=e.target.files[0];
-      await this.alignProjectFolderToImportedFile(file);
-      await this.importTsv(file);
+      if(file) await XFileCoordinator.run('Import transcript',async()=>{await this.alignProjectFolderToImportedFile(file);await this.importTsv(file);},{snapshot:true});
       e.target.value='';
     };
     if(XDom.doteFile){
       XDom.doteFile.onchange=async e=>{
         const file=e.target.files[0];
-        await this.alignProjectFolderToImportedFile(file);
-        await this.importDote(file);
+        if(file) await XFileCoordinator.run('Import transcript',async()=>{await this.alignProjectFolderToImportedFile(file);await this.importDote(file);},{snapshot:true});
         e.target.value='';
       };
     }
     if(XDom.appendProjectFile){
       XDom.appendProjectFile.onchange=e=>{
-        this.appendProject(e.target.files[0]);
+        const file=e.target.files[0];if(file) XFileCoordinator.run('Append project',()=>this.appendProject(file),{snapshot:true});
         e.target.value='';
       };
     }
     if(XDom.elanTsvFile){
       XDom.elanTsvFile.onchange=async e=>{
         const file=e.target.files[0];
-        await this.alignProjectFolderToImportedFile(file);
-        await this.importElanTsv(file);
+        if(file) await XFileCoordinator.run('Import transcript',async()=>{await this.alignProjectFolderToImportedFile(file);await this.importElanTsv(file);},{snapshot:true});
         e.target.value='';
       };
     }
@@ -22856,6 +23018,8 @@ const XDiagnostics = {
 
     this.section('Save, export, import, and project payloads');
     this.add(this.functionExists(XFiles.saveProject), 'Save project function is available');
+    this.add(typeof XFileCoordinator.run==='function'?'PASS':'FAIL','File management coordinator','Exclusive project file operations, native picker tracking and recovery controls.');
+    this.add('INFO','File management state',XFileCoordinator.active?XFileCoordinator.active.name:'Idle');
     this.add(this.functionExists(XFiles.chooseProjectFolderForManualSave), 'Manual Save verifies the target Project folder first', 'In browsers with direct folder access, Save opens the folder chooser before writing; autosave remains non-interactive.');
     this.add(this.functionExists(XFiles.openProjectFromHomePicker) && this.functionExists(XFiles.projectHomeDirectoryPickerOptions) && this.functionExists(XFiles.beginProjectLoadLocation), 'Project home anchor is separated from writable Project-folder authority', 'Chrome/Edge retains the loaded Project JSON file handle only as a startIn navigation anchor; active writable folder handles are cleared on Close/new Load so repeated projects cannot inherit a stale save target.');
     this.add(this.functionExists(XFiles.projectSourceRelationshipToDirectory), 'Remembered Project-folder handles can be validated against the loaded Project JSON source', 'When both handles are available, Gravar rejects a same-name remembered folder that does not actually contain the current Project JSON file.');
@@ -23255,6 +23419,13 @@ const XShortcuts = {
     };
 
     document.addEventListener('keydown', handleRowTimeShortcutCapture, true);
+    // Capture at the window before row/editor handlers can consume Save As.
+    window.addEventListener('keydown',e=>{
+      if((e.metaKey||e.ctrlKey)&&e.shiftKey&&!e.altKey&&(String(e.key||'').toLowerCase()==='s'||e.code==='KeyS')){
+        consumeShortcut(e);
+        if(!e.repeat) XFiles.saveProject();
+      }
+    },true);
 
     // Use Command/Ctrl + Arrow for 0.10 sec scrubbing.
     // Use Command-Shift/Ctrl-Shift + Arrow for 1.0 sec jumps.
@@ -23270,15 +23441,6 @@ const XShortcuts = {
       const startBracket=(e.key==='['||e.code==='BracketLeft');
       const endBracket=(e.key===']'||e.code==='BracketRight');
       const deleteRowKey=(e.key==='Delete'||e.key==='Backspace'||e.key==='Del'||e.code==='Delete'||e.code==='Backspace');
-
-      // Project Save: use the existing manual Save workflow and consume the browser's native Save As shortcut.
-      if(e.key.toLowerCase()==='s'&&mod&&e.shiftKey&&!e.altKey){
-        consumeShortcut(e);
-        if(!e.repeat && typeof XFiles !== 'undefined' && typeof XFiles.saveProject === 'function'){
-          XFiles.saveProject();
-        }
-        return;
-      }
 
       if(deleteRowKey&&mod&&!e.shiftKey&&!e.altKey){
         const target=e.target;
@@ -29161,7 +29323,7 @@ function XEnsureVClipDrawingOverlay135(spec){
    Keeps visible build surfaces synchronized with XBuild at startup.
 ========================= */
 (function(){
-  const EXPECTED_VERSION='0.6.214';
+  const EXPECTED_VERSION='0.6.215';
   const EXPECTED_LABEL='Standalone Web';
   function syncBuildLabels(){
     try{
